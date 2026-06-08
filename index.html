@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>MarketHub - Gestion B2B</title>
+  <!-- PWA manifest & theme -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -15,9 +19,12 @@
       }
     }
   </script>
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  <!-- SheetJS -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <!-- React, ReactDOM, Babel -->
   <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
@@ -40,7 +47,7 @@
       }
     }
 
-    // Fonction utilitaire pour nettoyer les marques (supprime les entrées invalides)
+    // Nettoyage des marques
     const cleanBrands = (brandsArray) => {
       if (!Array.isArray(brandsArray)) return [];
       return brandsArray.filter(b => 
@@ -52,6 +59,25 @@
         name: b.name.trim(),
         products: b.products.filter(p => p && p.name && typeof p.name === 'string' && p.name.trim() !== '')
       }));
+    };
+
+    // Nettoyage des commandes
+    const cleanOrders = (ordersArray) => {
+      if (!Array.isArray(ordersArray)) return [];
+      return ordersArray.filter(o => o && typeof o === 'object').map(o => {
+        let items = o.items;
+        if (!Array.isArray(items)) {
+          items = Object.values(items || {});
+        }
+        items = items.filter(i => i && i.product && i.product.name);
+        return {
+          ...o,
+          items: items,
+          total: typeof o.total === 'number' ? o.total : 0,
+          delivery: o.delivery || { name: '', phone: '', address: '', instructions: '' },
+          status: o.status || 'new'
+        };
+      });
     };
 
     const App = () => {
@@ -75,7 +101,6 @@
       const [pinCode, setPinCode] = useState('');
       const [showPrices, setShowPrices] = useState(true);
       
-      // Initialisation avec nettoyage
       const [brands, setBrands] = useState(() => {
         const saved = localStorage.getItem('marketHubBrands');
         const parsed = saved ? JSON.parse(saved) : [];
@@ -91,7 +116,7 @@
       const [orders, setOrders] = useState(() => {
         const savedOrders = localStorage.getItem('marketHubOrders');
         const parsed = savedOrders ? JSON.parse(savedOrders) : [];
-        return Array.isArray(parsed) ? parsed : [];
+        return cleanOrders(parsed);
       });
       const [selectedProduct, setSelectedProduct] = useState(null);
       const [showCartModal, setShowCartModal] = useState(false);
@@ -177,11 +202,12 @@
             addLog('log', 'Brands chargés et nettoyés');
           }
           if (data?.orders) {
-            let ordersRaw = data.orders;
-            if (!Array.isArray(ordersRaw)) ordersRaw = Object.values(ordersRaw);
-            setOrders(ordersRaw);
-            localStorage.setItem('marketHubOrders', JSON.stringify(ordersRaw));
-            addLog('log', 'Orders chargés');
+            let rawOrders = data.orders;
+            if (!Array.isArray(rawOrders)) rawOrders = Object.values(rawOrders);
+            const cleanedOrders = cleanOrders(rawOrders);
+            setOrders(cleanedOrders);
+            localStorage.setItem('marketHubOrders', JSON.stringify(cleanedOrders));
+            addLog('log', 'Orders chargés et nettoyés');
           }
           initialLoadDone.current = true;
           setIsLoading(false);
@@ -206,6 +232,15 @@
       useEffect(() => { localStorage.setItem('marketHubCart', JSON.stringify(cart)); }, [cart]);
       useEffect(() => { localStorage.setItem('marketHubBrands', JSON.stringify(brands)); }, [brands]);
       useEffect(() => { localStorage.setItem('marketHubOrders', JSON.stringify(orders)); }, [orders]);
+      
+      // Service Worker (PWA)
+      useEffect(() => {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/service-worker.js')
+            .then(reg => addLog('log', 'Service Worker enregistré'))
+            .catch(err => addLog('error', 'Service Worker échec: ' + err.message));
+        }
+      }, [addLog]);
       
       const notify = (msg) => { setNotification(msg); setTimeout(() => setNotification(null), 2000); };
       
@@ -382,7 +417,10 @@
         setCart([]); setShowDeliveryModal(false);
         notify(`Commande envoyée ! Total : ${cartTotal.toFixed(2)}€`);
       };
-      const updateOrderStatus = (oid, status) => { setOrders(orders.map(o => o.id===oid ? {...o, status} : o)); notify(`Commande ${status==="processed"?"traitée":"livrée"}`); };
+      const updateOrderStatus = (oid, status) => { 
+        setOrders(orders.map(o => o.id===oid ? {...o, status} : o)); 
+        notify(`Commande ${status==="processed"?"traitée":"livrée"}`);
+      };
       const newOrders = orders.filter(o => o.status === "new");
       const processedOrders = orders.filter(o => o.status === "processed");
       const deliveredOrders = orders.filter(o => o.status === "delivered");
@@ -470,7 +508,7 @@
               </div>
             )}
             
-            {/* Modale PIN (identique) */}
+            {/* Modale PIN */}
             {showPinModal && (
               <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50">
                 <div className="bg-slate-800 w-full max-w-[320px] rounded-2xl shadow-2xl p-6 border border-slate-700">
@@ -488,7 +526,7 @@
               </div>
             )}
             
-            {/* Bouton panier (client) */}
+            {/* Bouton panier */}
             {!isAdmin && (
               <div className="fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none z-40">
                 <div className="w-full max-w-[360px] px-4 pb-4 pointer-events-auto">
@@ -523,7 +561,7 @@
               </div>
             )}
             
-            {/* Modale panier (client) */}
+            {/* Modale panier */}
             {showCartModal && !isAdmin && (
               <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                 <div className="bg-slate-800 w-full max-w-[340px] rounded-2xl shadow-2xl max-h-[80vh] flex flex-col border border-slate-700">
@@ -555,7 +593,7 @@
               </div>
             )}
             
-            {/* Modale livraison (client) */}
+            {/* Modale livraison */}
             {showDeliveryModal && !isAdmin && (
               <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                 <div className="bg-slate-800 w-full max-w-[340px] rounded-2xl shadow-2xl p-6 border border-slate-700">
@@ -571,7 +609,7 @@
               </div>
             )}
             
-            {/* Modale commandes admin (identique, inchangée) */}
+            {/* Modale commandes admin */}
             {showOrdersModal && isAdmin && (
               <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                 <div className="bg-slate-800 w-full max-w-[340px] rounded-2xl shadow-2xl max-h-[85vh] flex flex-col border border-slate-700">
@@ -582,54 +620,84 @@
                     <button onClick={() => setOrdersActiveTab("delivered")} className={`flex-1 py-3 text-xs font-medium ${ordersActiveTab==="delivered"?"text-indigo-400 border-b-2 border-indigo-400":"text-slate-400"}`}>Livrées ({deliveredOrders.length})</button>
                   </div>
                   <div className="flex-1 overflow-y-auto p-3">
-                    {ordersActiveTab==="new" && (newOrders.length===0?<p className="text-center text-slate-400 py-4">Aucune nouvelle commande</p>:newOrders.map(order=>(
-                      <div key={order.id} className="mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600">
-                        <div className="text-xs text-slate-400 mb-1">{order.timestamp}</div><div className="font-semibold text-slate-100">{order.delivery.name}</div><div className="text-xs text-slate-300">{order.delivery.address}</div>
-                        {order.delivery.phone&&<div className="text-xs text-slate-300">📞 {order.delivery.phone}</div>}
-                        {order.delivery.instructions&&<div className="text-xs italic text-slate-400 mt-1">📝 {order.delivery.instructions}</div>}
-                        <div className="mt-2 space-y-1">{order.items.map((item,idx)=>(
-                          <div key={idx} className="flex justify-between text-xs text-slate-300"><span>{item.quantity}× {item.product.name}</span>{showPrices?<span>{(item.product.price*item.quantity).toFixed(2)}€</span>:<span>•••</span>}</div>
-                        ))}</div>
-                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-600">
-                          {showPrices?<span className="font-bold text-indigo-400">Total : {order.total.toFixed(2)}€</span>:<span className="font-bold text-slate-400">Total : •••</span>}
-                          <button onClick={()=>requestConfirm("update",{orderId:order.id,newStatus:"processed"},()=>updateOrderStatus(order.id,"processed"))} className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold">Marquer traitée</button>
+                    {ordersActiveTab==="new" && (newOrders.length===0?<p className="text-center text-slate-400 py-4">Aucune nouvelle commande</p>:newOrders.map(order=>{
+                      const safeItems = Array.isArray(order.items) ? order.items : [];
+                      return (
+                        <div key={order.id} className="mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600">
+                          <div className="text-xs text-slate-400 mb-1">{order.timestamp}</div>
+                          <div className="font-semibold text-slate-100">{order.delivery?.name || 'Nom inconnu'}</div>
+                          <div className="text-xs text-slate-300">{order.delivery?.address || ''}</div>
+                          {order.delivery?.phone && <div className="text-xs text-slate-300">📞 {order.delivery.phone}</div>}
+                          {order.delivery?.instructions && <div className="text-xs italic text-slate-400 mt-1">📝 {order.delivery.instructions}</div>}
+                          <div className="mt-2 space-y-1">
+                            {safeItems.map((item,idx)=>(
+                              <div key={idx} className="flex justify-between text-xs text-slate-300">
+                                <span>{item.quantity}× {item.product?.name || 'Produit supprimé'}</span>
+                                {showPrices && item.product?.price ? <span>{(item.product.price * item.quantity).toFixed(2)}€</span> : <span>•••</span>}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-600">
+                            {showPrices ? <span className="font-bold text-indigo-400">Total : {order.total?.toFixed(2) || '0.00'}€</span> : <span className="font-bold text-slate-400">Total : •••</span>}
+                            <button onClick={()=>requestConfirm("update",{orderId:order.id,newStatus:"processed"},()=>updateOrderStatus(order.id,"processed"))} className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold">Marquer traitée</button>
+                          </div>
                         </div>
-                      </div>
-                    )))}
-                    {ordersActiveTab==="processed" && (processedOrders.length===0?<p className="text-center text-slate-400 py-4">Aucune commande traitée</p>:processedOrders.map(order=>(
-                      <div key={order.id} className="mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600">
-                        <div className="text-xs text-slate-400 mb-1">{order.timestamp}</div><div className="font-semibold text-slate-100">{order.delivery.name}</div><div className="text-xs text-slate-300">{order.delivery.address}</div>
-                        {order.delivery.phone&&<div className="text-xs text-slate-300">📞 {order.delivery.phone}</div>}
-                        {order.delivery.instructions&&<div className="text-xs italic text-slate-400 mt-1">📝 {order.delivery.instructions}</div>}
-                        <div className="mt-2 space-y-1">{order.items.map((item,idx)=>(
-                          <div key={idx} className="flex justify-between text-xs text-slate-300"><span>{item.quantity}× {item.product.name}</span>{showPrices?<span>{(item.product.price*item.quantity).toFixed(2)}€</span>:<span>•••</span>}</div>
-                        ))}</div>
-                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-600">
-                          {showPrices?<span className="font-bold text-indigo-400">Total : {order.total.toFixed(2)}€</span>:<span className="font-bold text-slate-400">Total : •••</span>}
-                          <button onClick={()=>requestConfirm("update",{orderId:order.id,newStatus:"delivered"},()=>updateOrderStatus(order.id,"delivered"))} className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold">Marquer livrée</button>
+                      );
+                    }))}
+                    {ordersActiveTab==="processed" && (processedOrders.length===0?<p className="text-center text-slate-400 py-4">Aucune commande traitée</p>:processedOrders.map(order=>{
+                      const safeItems = Array.isArray(order.items) ? order.items : [];
+                      return (
+                        <div key={order.id} className="mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600">
+                          <div className="text-xs text-slate-400 mb-1">{order.timestamp}</div>
+                          <div className="font-semibold text-slate-100">{order.delivery?.name || 'Nom inconnu'}</div>
+                          <div className="text-xs text-slate-300">{order.delivery?.address || ''}</div>
+                          {order.delivery?.phone && <div className="text-xs text-slate-300">📞 {order.delivery.phone}</div>}
+                          {order.delivery?.instructions && <div className="text-xs italic text-slate-400 mt-1">📝 {order.delivery.instructions}</div>}
+                          <div className="mt-2 space-y-1">
+                            {safeItems.map((item,idx)=>(
+                              <div key={idx} className="flex justify-between text-xs text-slate-300">
+                                <span>{item.quantity}× {item.product?.name || 'Produit supprimé'}</span>
+                                {showPrices && item.product?.price ? <span>{(item.product.price * item.quantity).toFixed(2)}€</span> : <span>•••</span>}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-600">
+                            {showPrices ? <span className="font-bold text-indigo-400">Total : {order.total?.toFixed(2) || '0.00'}€</span> : <span className="font-bold text-slate-400">Total : •••</span>}
+                            <button onClick={()=>requestConfirm("update",{orderId:order.id,newStatus:"delivered"},()=>updateOrderStatus(order.id,"delivered"))} className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold">Marquer livrée</button>
+                          </div>
                         </div>
-                      </div>
-                    )))}
-                    {ordersActiveTab==="delivered" && (deliveredOrders.length===0?<p className="text-center text-slate-400 py-4">Aucune commande livrée</p>:deliveredOrders.map(order=>(
-                      <div key={order.id} className="mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600 opacity-75">
-                        <div className="text-xs text-slate-400 mb-1">{order.timestamp}</div><div className="font-semibold text-slate-100">{order.delivery.name}</div><div className="text-xs text-slate-300">{order.delivery.address}</div>
-                        {order.delivery.phone&&<div className="text-xs text-slate-300">📞 {order.delivery.phone}</div>}
-                        {order.delivery.instructions&&<div className="text-xs italic text-slate-400 mt-1">📝 {order.delivery.instructions}</div>}
-                        <div className="mt-2 space-y-1">{order.items.map((item,idx)=>(
-                          <div key={idx} className="flex justify-between text-xs text-slate-300"><span>{item.quantity}× {item.product.name}</span>{showPrices?<span>{(item.product.price*item.quantity).toFixed(2)}€</span>:<span>•••</span>}</div>
-                        ))}</div>
-                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-600">
-                          {showPrices?<span className="font-bold text-indigo-400">Total : {order.total.toFixed(2)}€</span>:<span className="font-bold text-slate-400">Total : •••</span>}
-                          <span className="text-xs text-emerald-400">Livrée</span>
+                      );
+                    }))}
+                    {ordersActiveTab==="delivered" && (deliveredOrders.length===0?<p className="text-center text-slate-400 py-4">Aucune commande livrée</p>:deliveredOrders.map(order=>{
+                      const safeItems = Array.isArray(order.items) ? order.items : [];
+                      return (
+                        <div key={order.id} className="mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600 opacity-75">
+                          <div className="text-xs text-slate-400 mb-1">{order.timestamp}</div>
+                          <div className="font-semibold text-slate-100">{order.delivery?.name || 'Nom inconnu'}</div>
+                          <div className="text-xs text-slate-300">{order.delivery?.address || ''}</div>
+                          {order.delivery?.phone && <div className="text-xs text-slate-300">📞 {order.delivery.phone}</div>}
+                          {order.delivery?.instructions && <div className="text-xs italic text-slate-400 mt-1">📝 {order.delivery.instructions}</div>}
+                          <div className="mt-2 space-y-1">
+                            {safeItems.map((item,idx)=>(
+                              <div key={idx} className="flex justify-between text-xs text-slate-300">
+                                <span>{item.quantity}× {item.product?.name || 'Produit supprimé'}</span>
+                                {showPrices && item.product?.price ? <span>{(item.product.price * item.quantity).toFixed(2)}€</span> : <span>•••</span>}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-600">
+                            {showPrices ? <span className="font-bold text-indigo-400">Total : {order.total?.toFixed(2) || '0.00'}€</span> : <span className="font-bold text-slate-400">Total : •••</span>}
+                            <span className="text-xs text-emerald-400">Livrée</span>
+                          </div>
                         </div>
-                      </div>
-                    )))}
+                      );
+                    }))}
                   </div>
                 </div>
               </div>
             )}
             
-            {/* Modale données (import/export) */}
+            {/* Modale données */}
             {showDataModal && isAdmin && (
               <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                 <div className="bg-slate-800 w-full max-w-[340px] rounded-2xl p-6 shadow-2xl border border-slate-700">
@@ -662,7 +730,7 @@
               </div>
             )}
             
-            {/* Modales admin (ajout / gestion / édition) avec safeBrands */}
+            {/* Modales admin */}
             {(showModal || showProductModal || showBrandSelect || showManageModal || editingBrand) && (
               <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                 <div className="bg-slate-800 w-full p-6 rounded-[28px] border border-slate-700 shadow-2xl max-h-[80vh] overflow-y-auto">
