@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
   <title>MarketHub - Gestion B2B</title>
-  <!-- Tailwind CSS (via CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Configuration Tailwind : supprimer les styles par défaut qui pourraient gêner -->
   <script>
     tailwind.config = {
       theme: {
@@ -24,20 +22,18 @@
       }
     }
   </script>
-  <!-- React et ReactDOM (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
-  <!-- Point d'entrée pour l'application -->
   <div id="root"></div>
   <script>
-    // ==================== CODE MONOLITHIQUE DE L'APPLICATION ====================
-    // Ce code est une copie de la dernière version corrigée avec chargement Firebase,
-    // synchronisation, thème cyber B2B, etc.
-    
+    // ==================== CODE MONOLITHIQUE SANS JSX ====================
     const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
+    // --------------------------------------------------------------------
+    // Composant App complet (converti en React.createElement)
+    // --------------------------------------------------------------------
     const App = () => {
-      // ========== ÉTATS PRINCIPAUX ==========
+      // ---------- États (identiques à l'original) ----------
       const [isAdmin, setIsAdmin] = useState(false);
       const [currentView, setCurrentView] = useState('home');
       const [selectedBrand, setSelectedBrand] = useState(null);
@@ -45,7 +41,6 @@
       const [notification, setNotification] = useState(null);
       const [isLoading, setIsLoading] = useState(true);
       
-      // États des modales admin
       const [showModal, setShowModal] = useState(false);
       const [showProductModal, setShowProductModal] = useState(false);
       const [showBrandSelect, setShowBrandSelect] = useState(false);
@@ -55,26 +50,17 @@
       const [editingProduct, setEditingProduct] = useState(null);
       const [editingBrand, setEditingBrand] = useState(null);
       const [manageSelectedBrand, setManageSelectedBrand] = useState(null);
-      
-      // État pour la confirmation interne
       const [confirmAction, setConfirmAction] = useState(null);
-      
-      // ========== ÉTAT POUR MODALE DE CONNEXION PIN ==========
       const [showPinModal, setShowPinModal] = useState(false);
       const [pinCode, setPinCode] = useState('');
-      
-      // ========== ÉTAT POUR VISIBILITÉ DES PRIX (admin only) ==========
       const [showPrices, setShowPrices] = useState(true);
       
-      // Données
       const [brands, setBrands] = useState(() => {
         const saved = localStorage.getItem('marketHubBrands');
         return saved ? JSON.parse(saved) : [];
       });
       const [newBrand, setNewBrand] = useState({ name: "", image: null });
       const [newProduct, setNewProduct] = useState({ name: "", qty: "", price: "", image: null, brandId: null });
-      
-      // Panier et commandes
       const [cart, setCart] = useState(() => {
         const savedCart = localStorage.getItem('marketHubCart');
         return savedCart ? JSON.parse(savedCart) : [];
@@ -83,34 +69,18 @@
         const savedOrders = localStorage.getItem('marketHubOrders');
         return savedOrders ? JSON.parse(savedOrders) : [];
       });
-      
-      // Modale produit client
       const [selectedProduct, setSelectedProduct] = useState(null);
       const [showCartModal, setShowCartModal] = useState(false);
       const [productQuantity, setProductQuantity] = useState(1);
-      
-      // Modale livraison
       const [showDeliveryModal, setShowDeliveryModal] = useState(false);
-      const [deliveryInfo, setDeliveryInfo] = useState({
-        name: "", phone: "", address: "", instructions: ""
-      });
-      
-      // Onglet des commandes admin
+      const [deliveryInfo, setDeliveryInfo] = useState({ name: "", phone: "", address: "", instructions: "" });
       const [ordersActiveTab, setOrdersActiveTab] = useState("new");
-      
-      // ========== DÉBOGAGE CONSOLE ==========
       const [logs, setLogs] = useState([]);
       const [showDebug, setShowDebug] = useState(false);
       const logsEndRef = useRef(null);
-      
-      // État pour SheetJS
       const [sheetJsReady, setSheetJsReady] = useState(false);
-      
-      // État pour la prévisualisation d'import
       const [previewData, setPreviewData] = useState(null);
       const [isImporting, setIsImporting] = useState(false);
-      
-      // Référence pour éviter double initialisation Firebase
       const firebaseInitialized = useRef(false);
       const [firebaseReady, setFirebaseReady] = useState(false);
       const initialLoadDone = useRef(false);
@@ -119,34 +89,21 @@
         const timestamp = new Date().toLocaleTimeString();
         const message = args.map(arg => {
           if (typeof arg === 'object') {
-            try {
-              return JSON.stringify(arg);
-            } catch (e) {
-              return String(arg);
-            }
+            try { return JSON.stringify(arg); } catch(e) { return String(arg); }
           }
           return String(arg);
         }).join(' ');
         setLogs(prev => [{ type, timestamp, message }, ...prev].slice(0, 500));
       }, []);
       
+      // Override console
       useEffect(() => {
         const originalLog = console.log;
         const originalError = console.error;
-        console.log = (...args) => {
-          addLog('log', ...args);
-          originalLog(...args);
-        };
-        console.error = (...args) => {
-          addLog('error', ...args);
-          originalError(...args);
-        };
-        const handleGlobalError = (event) => {
-          addLog('error', `Global: ${event.message} at ${event.filename}:${event.lineno}`);
-        };
-        const handlePromiseRejection = (event) => {
-          addLog('error', `Unhandled Rejection: ${event.reason}`);
-        };
+        console.log = (...args) => { addLog('log', ...args); originalLog(...args); };
+        console.error = (...args) => { addLog('error', ...args); originalError(...args); };
+        const handleGlobalError = (event) => addLog('error', `Global: ${event.message}`);
+        const handlePromiseRejection = (event) => addLog('error', `Unhandled Rejection: ${event.reason}`);
         window.addEventListener('error', handleGlobalError);
         window.addEventListener('unhandledrejection', handlePromiseRejection);
         return () => {
@@ -157,42 +114,24 @@
         };
       }, [addLog]);
       
-      // ========== CHARGEMENT DYNAMIQUE DE FIREBASE ==========
+      // Firebase loading (identique)
       useEffect(() => {
         let mounted = true;
         const loadFirebase = async () => {
           try {
             if (window.firebase && window.firebase.apps && window.firebase.apps.length) {
               addLog('log', 'Firebase déjà présent');
-              if (mounted) {
-                setFirebaseReady(true);
-                if (!initialLoadDone.current) {
-                  loadDataFromFirebase();
-                }
-                setIsLoading(false);
-              }
+              if (mounted) { setFirebaseReady(true); if (!initialLoadDone.current) loadDataFromFirebase(); setIsLoading(false); }
               return;
             }
-            // Charger Firebase App
             const appScript = document.createElement('script');
             appScript.src = 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js';
             appScript.async = true;
-            await new Promise((resolve, reject) => {
-              appScript.onload = resolve;
-              appScript.onerror = reject;
-              document.head.appendChild(appScript);
-            });
-            // Charger Firebase Database
+            await new Promise((resolve, reject) => { appScript.onload = resolve; appScript.onerror = reject; document.head.appendChild(appScript); });
             const dbScript = document.createElement('script');
             dbScript.src = 'https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js';
             dbScript.async = true;
-            await new Promise((resolve, reject) => {
-              dbScript.onload = resolve;
-              dbScript.onerror = reject;
-              document.head.appendChild(dbScript);
-            });
-            
-            // Initialisation une fois les scripts chargés
+            await new Promise((resolve, reject) => { dbScript.onload = resolve; dbScript.onerror = reject; document.head.appendChild(dbScript); });
             if (!firebaseInitialized.current && window.firebase) {
               const firebaseConfig = {
                 apiKey: "AIzaSyBauxPkS-FXjCSErcluaOlReANeOL0vPEs",
@@ -203,170 +142,74 @@
                 messagingSenderId: "632425841691",
                 appId: "1:632425841691:web:1a701a8d3dd72d9bfee4be"
               };
-              if (!window.firebase.apps.length) {
-                window.firebase.initializeApp(firebaseConfig);
-                addLog('log', 'Firebase initialisé avec succès');
-              } else {
-                addLog('log', 'Firebase déjà initialisé');
-              }
+              if (!window.firebase.apps.length) window.firebase.initializeApp(firebaseConfig);
               firebaseInitialized.current = true;
-              if (mounted) {
-                setFirebaseReady(true);
-                loadDataFromFirebase();
-              }
+              if (mounted) { setFirebaseReady(true); loadDataFromFirebase(); }
             }
             if (mounted) setIsLoading(false);
-          } catch (err) {
-            addLog('error', 'Erreur chargement Firebase : ' + err.message);
-            if (mounted) setIsLoading(false);
-          }
+          } catch(err) { addLog('error', 'Firebase: ' + err.message); if(mounted) setIsLoading(false); }
         };
         loadFirebase();
         return () => { mounted = false; };
       }, [addLog]);
       
-      // ========== FONCTION DE LECTURE DEPUIS FIREBASE ==========
       const loadDataFromFirebase = () => {
         if (!window.firebase || !window.firebase.database) return;
-        const db = window.firebase.database();
-        db.ref('/').once('value')
-          .then(snapshot => {
-            const data = snapshot.val();
-            if (data && data.data) {
-              setBrands(data.data);
-              localStorage.setItem('marketHubBrands', JSON.stringify(data.data));
-              addLog('log', 'Brands chargés depuis Firebase');
-            }
-            if (data && data.orders) {
-              setOrders(data.orders);
-              localStorage.setItem('marketHubOrders', JSON.stringify(data.orders));
-              addLog('log', 'Orders chargés depuis Firebase');
-            }
-            initialLoadDone.current = true;
-          })
-          .catch(err => {
-            addLog('error', 'Erreur lecture Firebase: ' + err.message);
-            initialLoadDone.current = true;
-          });
+        window.firebase.database().ref('/').once('value').then(snapshot => {
+          const data = snapshot.val();
+          if (data && data.data) { setBrands(data.data); localStorage.setItem('marketHubBrands', JSON.stringify(data.data)); }
+          if (data && data.orders) { setOrders(data.orders); localStorage.setItem('marketHubOrders', JSON.stringify(data.orders)); }
+          initialLoadDone.current = true;
+        }).catch(err => { addLog('error', 'Firebase read: ' + err.message); initialLoadDone.current = true; });
       };
       
-      // ========== SAUVEGARDE DANS FIREBASE À CHAQUE MODIFICATION ==========
       useEffect(() => {
         if (!firebaseReady || !initialLoadDone.current) return;
         if (!window.firebase || !window.firebase.database) return;
-        const db = window.firebase.database();
-        db.ref('data').set(brands)
-          .then(() => addLog('log', 'Brands sauvegardés dans Firebase'))
-          .catch(err => addLog('error', 'Erreur sauvegarde brands: ' + err.message));
+        window.firebase.database().ref('data').set(brands).catch(err => addLog('error', err.message));
       }, [brands, firebaseReady]);
-      
       useEffect(() => {
         if (!firebaseReady || !initialLoadDone.current) return;
         if (!window.firebase || !window.firebase.database) return;
-        const db = window.firebase.database();
-        db.ref('orders').set(orders)
-          .then(() => addLog('log', 'Orders sauvegardés dans Firebase'))
-          .catch(err => addLog('error', 'Erreur sauvegarde orders: ' + err.message));
+        window.firebase.database().ref('orders').set(orders).catch(err => addLog('error', err.message));
       }, [orders, firebaseReady]);
       
-      // ========== CHARGEMENT DYNAMIQUE DE SHEETJS ==========
+      // SheetJS
       useEffect(() => {
-        if (window.XLSX) {
-          setSheetJsReady(true);
-          addLog('log', 'SheetJS déjà présent');
-          return;
-        }
+        if (window.XLSX) { setSheetJsReady(true); return; }
         const script = document.createElement('script');
         script.src = 'https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js';
         script.async = true;
-        script.onload = () => {
-          setSheetJsReady(true);
-          addLog('log', 'SheetJS chargé dynamiquement');
-        };
-        script.onerror = () => {
-          addLog('error', 'Échec du chargement de SheetJS');
-          notify("Impossible de charger la bibliothèque Excel");
-        };
+        script.onload = () => setSheetJsReady(true);
+        script.onerror = () => notify("Impossible de charger Excel");
         document.head.appendChild(script);
-      }, [addLog]);
+      }, []);
       
-      // ========== SERVICE WORKER (optionnel) ==========
-      useEffect(() => {
-        if ('serviceWorker' in navigator) {
-          const isSecure = window.location.protocol === 'https:' || window.location.protocol === 'http:';
-          if (isSecure) {
-            navigator.serviceWorker.register('/service-worker.js').catch(err => {
-              console.warn("Service Worker registration failed:", err);
-              addLog('error', `Service Worker error: ${err.message}`);
-            });
-          } else {
-            console.log("Service Worker non enregistré (protocole non sécurisé)");
-          }
-        }
-      }, [addLog]);
-      
-      useEffect(() => {
-        if (logsEndRef.current) {
-          logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, [logs]);
+      useEffect(() => { if (logsEndRef.current) logsEndRef.current.scrollIntoView({ behavior: 'smooth' }); }, [logs]);
       
       const copyLogs = async () => {
         const text = logs.map(l => `[${l.timestamp}] ${l.type.toUpperCase()}: ${l.message}`).join('\n');
-        try {
-          await navigator.clipboard.writeText(text);
-          alert('Rapport copié dans le presse-papier');
-        } catch (err) {
-          alert('Impossible de copier');
-        }
+        try { await navigator.clipboard.writeText(text); alert('Rapport copié'); } catch(err) { alert('Erreur copie'); }
       };
       
-      const DebugConsole = () => (
-        <div className={`fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ${showDebug ? 'h-40' : 'h-8'}`}>
-          <div className="bg-black/90 backdrop-blur-md w-full text-white text-xs">
-            <div className="flex justify-between items-center px-2 py-1 border-b border-gray-700">
-              <button onClick={() => setShowDebug(!showDebug)} className="bg-gray-700 px-2 py-0.5 rounded text-white">
-                {showDebug ? '▼ Masquer' : '▲ Logs'}
-              </button>
-              {showDebug && (
-                <button onClick={copyLogs} className="bg-blue-600 px-2 py-0.5 rounded text-white">
-                  Copier le rapport
-                </button>
-              )}
-            </div>
-            {showDebug && (
-              <div className="overflow-y-auto h-32 p-2 font-mono text-[10px] leading-relaxed">
-                {logs.length === 0 && <div className="text-gray-400">Aucun log pour l'instant</div>}
-                {logs.map((log, idx) => (
-                  <div key={idx} className={`border-b border-gray-800 py-0.5 ${log.type === 'error' ? 'text-red-400' : 'text-green-300'}`}>
-                    <span className="text-gray-500">[{log.timestamp}]</span> [{log.type.toUpperCase()}] {log.message}
-                  </div>
-                ))}
-                <div ref={logsEndRef} />
-              </div>
-            )}
-          </div>
-        </div>
+      const DebugConsole = () => React.createElement('div', { className: `fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ${showDebug ? 'h-40' : 'h-8'}` },
+        React.createElement('div', { className: 'bg-black/90 backdrop-blur-md w-full text-white text-xs' },
+          React.createElement('div', { className: 'flex justify-between items-center px-2 py-1 border-b border-gray-700' },
+            React.createElement('button', { onClick: () => setShowDebug(!showDebug), className: 'bg-gray-700 px-2 py-0.5 rounded text-white' }, showDebug ? '▼ Masquer' : '▲ Logs'),
+            showDebug && React.createElement('button', { onClick: copyLogs, className: 'bg-blue-600 px-2 py-0.5 rounded text-white' }, 'Copier le rapport')
+          ),
+          showDebug && React.createElement('div', { className: 'overflow-y-auto h-32 p-2 font-mono text-[10px] leading-relaxed' },
+            logs.length === 0 && React.createElement('div', { className: 'text-gray-400' }, 'Aucun log'),
+            logs.map((log, idx) => React.createElement('div', { key: idx, className: `border-b border-gray-800 py-0.5 ${log.type === 'error' ? 'text-red-400' : 'text-green-300'}` },
+              React.createElement('span', { className: 'text-gray-500' }, `[${log.timestamp}]`), ` [${log.type.toUpperCase()}] ${log.message}`
+            )),
+            React.createElement('div', { ref: logsEndRef })
+          )
+        )
       );
       
-      // ========== SAUVEGARDES LOCALES ==========
-      useEffect(() => {
-        localStorage.setItem('marketHubCart', JSON.stringify(cart));
-      }, [cart]);
-      useEffect(() => {
-        localStorage.setItem('marketHubBrands', JSON.stringify(brands));
-      }, [brands]);
-      useEffect(() => {
-        localStorage.setItem('marketHubOrders', JSON.stringify(orders));
-      }, [orders]);
+      const notify = (msg) => { setNotification(msg); setTimeout(() => setNotification(null), 2000); };
       
-      // ========== NOTIFICATIONS ==========
-      const notify = (msg) => {
-        setNotification(msg);
-        setTimeout(() => setNotification(null), 2000);
-      };
-      
-      // ========== GESTION DES IMAGES ==========
       const handleImageUpload = (e, setter, state) => {
         const file = e.target.files[0];
         if (file) {
@@ -389,153 +232,62 @@
         }
       };
       
-      // ========== ACTIONS MARQUES ==========
-      const addBrand = () => {
-        if (newBrand.name) {
-          setBrands([...brands, { id: Date.now(), ...newBrand, products: [] }]);
-          setNewBrand({ name: "", image: null });
-          setShowModal(false);
-          notify("Marque ajoutée");
-        }
-      };
-      const deleteBrand = (id) => {
-        setBrands(brands.filter(b => b.id !== id));
-        notify("Marque supprimée");
-      };
-      const saveBrandEdit = () => {
-        setBrands(brands.map(b => b.id === editingBrand.id ? editingBrand : b));
-        setEditingBrand(null);
-        notify("Marque mise à jour");
-      };
+      const addBrand = () => { if (newBrand.name) { setBrands([...brands, { id: Date.now(), ...newBrand, products: [] }]); setNewBrand({ name: "", image: null }); setShowModal(false); notify("Marque ajoutée"); } };
+      const deleteBrand = (id) => { setBrands(brands.filter(b => b.id !== id)); notify("Marque supprimée"); };
+      const saveBrandEdit = () => { setBrands(brands.map(b => b.id === editingBrand.id ? editingBrand : b)); setEditingBrand(null); notify("Marque mise à jour"); };
+      const addProduct = () => { if (newProduct.name && newProduct.brandId) { setBrands(brands.map(b => b.id === newProduct.brandId ? { ...b, products: [...b.products, { id: Date.now(), ...newProduct }] } : b)); setNewProduct({ name: "", qty: "", price: "", image: null, brandId: null }); setShowProductModal(false); notify("Produit ajouté"); } };
+      const saveProductEdit = () => { setBrands(brands.map(b => ({ ...b, products: b.products.map(p => p.id === editingProduct.id ? editingProduct : p) }))); setEditingProduct(null); notify("Produit modifié"); };
+      const deleteProduct = (brandId, productId) => { setBrands(brands.map(b => b.id === brandId ? { ...b, products: b.products.filter(p => p.id !== productId) } : b)); notify("Produit supprimé"); };
       
-      // ========== ACTIONS PRODUITS ==========
-      const addProduct = () => {
-        if (newProduct.name && newProduct.brandId) {
-          setBrands(brands.map(b => b.id === newProduct.brandId ? { ...b, products: [...b.products, { id: Date.now(), ...newProduct }] } : b));
-          setNewProduct({ name: "", qty: "", price: "", image: null, brandId: null });
-          setShowProductModal(false);
-          notify("Produit ajouté");
-        }
-      };
-      const saveProductEdit = () => {
-        setBrands(brands.map(b => ({
-          ...b, products: b.products.map(p => p.id === editingProduct.id ? editingProduct : p)
-        })));
-        setEditingProduct(null);
-        notify("Produit modifié");
-      };
-      const deleteProduct = (brandId, productId) => {
-        setBrands(brands.map(b => 
-          b.id === brandId ? { ...b, products: b.products.filter(p => p.id !== productId) } : b
-        ));
-        notify("Produit supprimé");
-      };
-      
-      // ========== EXPORT EXCEL ==========
       const exportToExcel = () => {
-        if (!window.XLSX) {
-          notify("Bibliothèque Excel pas encore chargée, réessayez dans quelques secondes");
-          return;
-        }
+        if (!window.XLSX) { notify("Excel pas encore chargé"); return; }
         try {
-          const data = [
-            ["Marque", "Produit", "Quantité", "Prix"],
-            ...brands.flatMap(b => b.products.map(p => [b.name, p.name, p.qty, p.price]))
-          ];
+          const data = [["Marque","Produit","Quantité","Prix"], ...brands.flatMap(b => b.products.map(p => [b.name, p.name, p.qty, p.price]))];
           const ws = window.XLSX.utils.aoa_to_sheet(data);
           const wb = window.XLSX.utils.book_new();
           window.XLSX.utils.book_append_sheet(wb, ws, "Inventaire");
           window.XLSX.writeFile(wb, "export_inventaire.xlsx");
-          notify("Export Excel réussi");
-        } catch (err) {
-          addLog('error', "Export échoué : " + err.message);
-          notify("Erreur lors de l'export");
-        }
+          notify("Export réussi");
+        } catch(err) { addLog('error', err.message); notify("Erreur export"); }
       };
       
-      // ========== IMPORT AVEC PREVISUALISATION ET UPSERT ==========
       const analyzeImportFile = (file) => {
-        if (!window.XLSX) {
-          notify("Bibliothèque Excel pas encore chargée");
-          return;
-        }
+        if (!window.XLSX) { notify("Excel pas chargé"); return; }
         const reader = new FileReader();
         reader.onload = (evt) => {
           try {
             const data = new Uint8Array(evt.target.result);
             const wb = window.XLSX.read(data, { type: 'array' });
             const ws = wb.Sheets[wb.SheetNames[0]];
-            
             const firstRow = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" })[0];
-            if (!firstRow || firstRow.length < 4) {
-              throw new Error("Le fichier doit contenir au moins 4 colonnes");
-            }
-            const expectedHeaders = ["Marque", "Produit", "Quantité", "Prix"];
-            const headers = firstRow.slice(0, 4).map(cell => String(cell).trim());
-            const isValid = expectedHeaders.every((h, idx) => headers[idx] === h);
-            if (!isValid) {
-              notify(`En-têtes incorrectes. Attendu: ${expectedHeaders.join(', ')}. Reçu: ${headers.join(', ')}`);
-              return;
-            }
-            
+            if (!firstRow || firstRow.length < 4) throw new Error("Colonnes insuffisantes");
+            const expected = ["Marque","Produit","Quantité","Prix"];
+            const headers = firstRow.slice(0,4).map(c => String(c).trim());
+            if (!expected.every((h,i) => headers[i] === h)) { notify(`En-têtes incorrectes : ${headers.join(', ')}`); return; }
             const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
             if (!rows || rows.length < 2) throw new Error("Fichier vide");
-            
             const brandProducts = new Map();
-            let totalProducts = 0;
-            let errors = [];
-            
-            for (let i = 1; i < rows.length; i++) {
+            let totalProducts = 0, errors = [];
+            for (let i=1; i<rows.length; i++) {
               const row = rows[i];
               if (!row || row.length < 4) continue;
               let brandName = row[0] ? String(row[0]).trim() : "";
               const productName = row[1] ? String(row[1]).trim() : "";
-              const qtyRaw = row[2];
-              const priceRaw = row[3];
-              
-              if (productName === "") continue;
-              if (brandName === "") brandName = "Inconnue";
-              
-              let qty = 0, price = 0;
-              let valid = true;
-              if (isNaN(parseFloat(qtyRaw)) || !isFinite(qtyRaw)) {
-                errors.push(`Ligne ${i+1}: Quantité non numérique (${qtyRaw}) pour ${productName}`);
-                valid = false;
-              } else {
-                qty = parseFloat(qtyRaw);
-              }
-              if (isNaN(parseFloat(priceRaw)) || !isFinite(priceRaw)) {
-                errors.push(`Ligne ${i+1}: Prix non numérique (${priceRaw}) pour ${productName}`);
-                valid = false;
-              } else {
-                price = parseFloat(priceRaw);
-              }
+              const qtyRaw = row[2], priceRaw = row[3];
+              if (!productName) continue;
+              if (!brandName) brandName = "Inconnue";
+              let qty = 0, price = 0, valid = true;
+              if (isNaN(parseFloat(qtyRaw))) { errors.push(`Ligne ${i+1}: Qté non numérique`); valid = false; } else qty = parseFloat(qtyRaw);
+              if (isNaN(parseFloat(priceRaw))) { errors.push(`Ligne ${i+1}: Prix non numérique`); valid = false; } else price = parseFloat(priceRaw);
               if (!valid) continue;
-              
-              if (!brandProducts.has(brandName)) {
-                brandProducts.set(brandName, new Map());
-              }
-              const productsMap = brandProducts.get(brandName);
-              if (!productsMap.has(productName)) {
-                productsMap.set(productName, { qty, price });
-                totalProducts++;
-              } else {
-                productsMap.set(productName, { qty, price });
-              }
+              if (!brandProducts.has(brandName)) brandProducts.set(brandName, new Map());
+              const prodMap = brandProducts.get(brandName);
+              if (!prodMap.has(productName)) { prodMap.set(productName, { qty, price }); totalProducts++; }
+              else prodMap.set(productName, { qty, price });
             }
-            
-            setPreviewData({
-              brandProducts,
-              totalProducts,
-              totalBrands: brandProducts.size,
-              errors
-            });
-            notify(`Analyse terminée : ${totalProducts} produits dans ${brandProducts.size} marques. ${errors.length} erreurs.`);
-          } catch (err) {
-            addLog('error', "Analyse échouée : " + err.message);
-            notify("Erreur lors de l'analyse du fichier");
-            setPreviewData(null);
-          }
+            setPreviewData({ brandProducts, totalProducts, totalBrands: brandProducts.size, errors });
+            notify(`Analyse : ${totalProducts} produits dans ${brandProducts.size} marques, ${errors.length} erreurs.`);
+          } catch(err) { addLog('error', err.message); notify("Erreur analyse"); setPreviewData(null); }
         };
         reader.readAsArrayBuffer(file);
       };
@@ -543,672 +295,340 @@
       const confirmImport = async () => {
         if (!previewData || isImporting) return;
         setIsImporting(true);
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise(r => setTimeout(r, 50));
         try {
           const { brandProducts } = previewData;
           let updatedBrands = [...brands];
-          let productsAdded = 0;
-          let productsUpdated = 0;
-          
+          let productsAdded = 0, productsUpdated = 0;
           for (let [brandName, productsMap] of brandProducts.entries()) {
             let brandIndex = updatedBrands.findIndex(b => b.name === brandName);
             if (brandIndex === -1) {
-              const newBrand = {
-                id: Date.now() + Math.random() * 10000,
-                name: brandName,
-                image: null,
-                products: []
-              };
-              updatedBrands.push(newBrand);
+              updatedBrands.push({ id: Date.now() + Math.random()*10000, name: brandName, image: null, products: [] });
               brandIndex = updatedBrands.length - 1;
             }
-            
-            const brand = updatedBrands[brandIndex];
-            const existingProducts = brand.products;
-            
+            const existingProducts = updatedBrands[brandIndex].products;
             for (let [productName, { qty, price }] of productsMap.entries()) {
               const existingIndex = existingProducts.findIndex(p => p.name === productName);
-              if (existingIndex !== -1) {
-                existingProducts[existingIndex].qty = qty;
-                existingProducts[existingIndex].price = price;
-                productsUpdated++;
-              } else {
-                existingProducts.push({
-                  id: Date.now() + Math.random() * 10000,
-                  name: productName,
-                  qty: qty,
-                  price: price,
-                  image: null
-                });
-                productsAdded++;
-              }
+              if (existingIndex !== -1) { existingProducts[existingIndex].qty = qty; existingProducts[existingIndex].price = price; productsUpdated++; }
+              else { existingProducts.push({ id: Date.now() + Math.random()*10000, name: productName, qty, price, image: null }); productsAdded++; }
             }
             updatedBrands[brandIndex].products = existingProducts;
           }
-          
           setBrands(updatedBrands);
-          notify(`Import confirmé : ${productsAdded} nouveaux produits, ${productsUpdated} mis à jour.`);
+          notify(`Import confirmé : ${productsAdded} nouveaux, ${productsUpdated} mis à jour.`);
           setPreviewData(null);
           setShowDataModal(false);
-        } catch (err) {
-          addLog('error', "Erreur lors de l'import: " + err.message);
-          notify("Erreur lors de l'import");
-        } finally {
-          setIsImporting(false);
-        }
+        } catch(err) { addLog('error', err.message); notify("Erreur import"); }
+        finally { setIsImporting(false); }
       };
       
-      const cancelPreview = () => {
-        setPreviewData(null);
-        notify("Import annulé");
-      };
+      const cancelPreview = () => { setPreviewData(null); notify("Import annulé"); };
       
-      // ========== NAVIGATION ==========
-      const openBrand = (brand) => {
-        setIsTransitioning(true);
-        setTimeout(() => { setSelectedBrand(brand); setCurrentView('brand'); setIsTransitioning(false); }, 300);
-      };
-      const goHome = () => {
-        setIsTransitioning(true);
-        setTimeout(() => { setCurrentView('home'); setIsTransitioning(false); }, 300);
-      };
+      const openBrand = (brand) => { setIsTransitioning(true); setTimeout(() => { setSelectedBrand(brand); setCurrentView('brand'); setIsTransitioning(false); }, 300); };
+      const goHome = () => { setIsTransitioning(true); setTimeout(() => { setCurrentView('home'); setIsTransitioning(false); }, 300); };
+      const toggleAdmin = () => { if (isAdmin) { setIsAdmin(false); goHome(); } else { setPinCode(''); setShowPinModal(true); } };
+      const handlePinDigit = (digit) => { if (pinCode.length < 6) setPinCode(prev => prev + digit); };
+      const handlePinDelete = () => { setPinCode(prev => prev.slice(0, -1)); };
+      useEffect(() => { if (pinCode.length === 6) { if (pinCode === "000000") { setIsAdmin(true); setShowPinModal(false); setPinCode(''); goHome(); notify("Connexion admin"); } else { notify("Code incorrect"); setPinCode(''); } } }, [pinCode]);
       
-      // ========== GESTION DE LA CONNEXION ADMIN ==========
-      const toggleAdmin = () => {
-        if (isAdmin) {
-          setIsAdmin(false);
-          goHome();
-        } else {
-          setPinCode('');
-          setShowPinModal(true);
-        }
-      };
-      
-      const handlePinDigit = (digit) => {
-        if (pinCode.length < 6) {
-          setPinCode(prev => prev + digit);
-        }
-      };
-      
-      const handlePinDelete = () => {
-        setPinCode(prev => prev.slice(0, -1));
-      };
-      
-      useEffect(() => {
-        if (pinCode.length === 6) {
-          if (pinCode === "000000") {
-            setIsAdmin(true);
-            setShowPinModal(false);
-            setPinCode('');
-            goHome();
-            notify("Connexion admin réussie");
-          } else {
-            notify("Code PIN incorrect");
-            setPinCode('');
-          }
-        }
-      }, [pinCode]);
-      
-      // ========== PANIER & COMMANDE ==========
-      const openProductModal = (product) => {
-        setSelectedProduct(product);
-        setProductQuantity(1);
-        setShowCartModal(false);
-      };
+      const openProductModal = (product) => { setSelectedProduct(product); setProductQuantity(1); setShowCartModal(false); };
       const addToCart = () => {
         if (!selectedProduct) return;
         const existing = cart.find(item => item.product.id === selectedProduct.id && item.brandId === selectedBrand?.id);
-        if (existing) {
-          setCart(cart.map(item =>
-            item.product.id === selectedProduct.id && item.brandId === selectedBrand?.id
-              ? { ...item, quantity: item.quantity + productQuantity }
-              : item
-          ));
-        } else {
-          setCart([...cart, {
-            product: selectedProduct,
-            brandId: selectedBrand.id,
-            brandName: selectedBrand.name,
-            quantity: productQuantity
-          }]);
-        }
-        notify(`${productQuantity} × ${selectedProduct.name} ajouté au panier`);
+        if (existing) setCart(cart.map(item => item.product.id === selectedProduct.id && item.brandId === selectedBrand?.id ? { ...item, quantity: item.quantity + productQuantity } : item));
+        else setCart([...cart, { product: selectedProduct, brandId: selectedBrand.id, brandName: selectedBrand.name, quantity: productQuantity }]);
+        notify(`${productQuantity} × ${selectedProduct.name} ajouté`);
         setSelectedProduct(null);
       };
-      const removeFromCart = (index) => {
-        const newCart = [...cart];
-        newCart.splice(index, 1);
-        setCart(newCart);
-        notify("Article retiré");
-      };
+      const removeFromCart = (index) => { const newCart = [...cart]; newCart.splice(index,1); setCart(newCart); notify("Article retiré"); };
       const cartTotal = cart.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
-      const openDeliveryModal = () => {
-        setShowCartModal(false);
-        setDeliveryInfo({ name: "", phone: "", address: "", instructions: "" });
-        setShowDeliveryModal(true);
-      };
+      const openDeliveryModal = () => { setShowCartModal(false); setDeliveryInfo({ name: "", phone: "", address: "", instructions: "" }); setShowDeliveryModal(true); };
       const validateOrder = () => {
-        if (!deliveryInfo.name || !deliveryInfo.address) {
-          notify("Veuillez entrer au moins le nom et l'adresse");
-          return;
-        }
-        const newOrder = {
-          id: Date.now(),
-          timestamp: new Date().toLocaleString(),
-          items: [...cart],
-          delivery: { ...deliveryInfo },
-          total: cartTotal,
-          status: "new"
-        };
+        if (!deliveryInfo.name || !deliveryInfo.address) { notify("Nom et adresse requis"); return; }
+        const newOrder = { id: Date.now(), timestamp: new Date().toLocaleString(), items: [...cart], delivery: { ...deliveryInfo }, total: cartTotal, status: "new" };
         setOrders([newOrder, ...orders]);
         setCart([]);
         setShowDeliveryModal(false);
         notify(`Commande envoyée ! Total : ${cartTotal.toFixed(2)}€`);
       };
-      
-      // ========== ADMIN COMMANDES ==========
-      const updateOrderStatus = (orderId, newStatus) => {
-        setOrders(orders.map(order =>
-          order.id === orderId ? { ...order, status: newStatus } : order
-        ));
-        notify(`Commande ${newStatus === "processed" ? "marquée traitée" : "marquée livrée"}`);
-      };
+      const updateOrderStatus = (orderId, newStatus) => { setOrders(orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)); notify(`Commande ${newStatus === "processed" ? "traitée" : "livrée"}`); };
       const newOrders = orders.filter(o => o.status === "new");
       const processedOrders = orders.filter(o => o.status === "processed");
       const deliveredOrders = orders.filter(o => o.status === "delivered");
-      
-      // ========== CONFIRMATION INTERNE ==========
-      const requestConfirm = (type, payload, callback) => {
-        setConfirmAction({ type, payload, callback });
-      };
+      const requestConfirm = (type, payload, callback) => { setConfirmAction({ type, payload, callback }); };
       const cancelConfirm = () => setConfirmAction(null);
-      const executeConfirm = () => {
-        if (confirmAction && confirmAction.callback) {
-          confirmAction.callback();
-        }
-        setConfirmAction(null);
-      };
+      const executeConfirm = () => { if (confirmAction && confirmAction.callback) confirmAction.callback(); setConfirmAction(null); };
       
-      // ========== RENDU PRINCIPAL ==========
-      if (isLoading) {
-        return (
-          <div className="fixed inset-0 bg-slate-900 flex items-center justify-center">
-            <div className="text-slate-200 text-lg">Chargement de l'application...</div>
-          </div>
-        );
-      }
+      // Sauvegardes locales
+      useEffect(() => { localStorage.setItem('marketHubCart', JSON.stringify(cart)); }, [cart]);
+      useEffect(() => { localStorage.setItem('marketHubBrands', JSON.stringify(brands)); }, [brands]);
+      useEffect(() => { localStorage.setItem('marketHubOrders', JSON.stringify(orders)); }, [orders]);
       
-      return (
-        <div className="fixed inset-0 bg-slate-900 flex justify-center font-sans">
-          {notification && (
-            <div className="fixed top-6 z-[100] bg-slate-800 text-slate-100 px-6 py-3 rounded-full text-xs font-bold shadow-2xl animate-fade-in-down border border-indigo-500/30">
-              {notification}
-            </div>
-          )}
-          
-          <div className={`w-full min-h-screen p-4 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-            
-            {/* HEADER */}
-            <div className="flex justify-between items-center mb-8 mt-2">
-              <button onClick={goHome} className="text-slate-400 text-[11px] font-medium tracking-tight hover:text-slate-200 transition-colors">
-                {currentView === 'home' ? 'LAICHE HOLDING' : '← Retour'}
-              </button>
-              <div className="flex items-center gap-2">
-                {isAdmin && (
-                  <button
-                    onClick={() => setShowPrices(!showPrices)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all active:scale-95 ${showPrices ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300'}`}
-                    title={showPrices ? "Masquer les prix" : "Afficher les prix"}
-                  >
-                    {showPrices ? '€' : '€̷'}
-                  </button>
-                )}
-                <button 
-                  onClick={toggleAdmin} 
-                  className={`px-4 py-1 text-[10px] font-semibold uppercase tracking-widest rounded-lg border transition-all ${isAdmin ? "bg-indigo-600 text-white border-indigo-500" : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700"}`}
-                >
-                  {isAdmin ? "Admin" : "Connexion"}
-                </button>
-              </div>
-            </div>
+      if (isLoading) return React.createElement('div', { className: 'fixed inset-0 bg-slate-900 flex items-center justify-center' }, React.createElement('div', { className: 'text-slate-200 text-lg' }, 'Chargement...'));
       
-            {/* CONTENU PRINCIPAL - ADMIN ou CLIENT */}
-            {currentView === 'home' ? (
-              isAdmin ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => setShowModal(true)} className="min-h-[48px] flex flex-col items-center justify-center gap-1 p-3 bg-slate-800 border border-slate-700 rounded-xl shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 active:scale-95 text-slate-100 font-medium">
-                    <span className="text-xl">🏷️</span>
-                    <span className="text-sm">Ajouter une marque</span>
-                  </button>
-                  <button onClick={() => setShowBrandSelect(true)} className="min-h-[48px] flex flex-col items-center justify-center gap-1 p-3 bg-slate-800 border border-slate-700 rounded-xl shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 active:scale-95 text-slate-100 font-medium">
-                    <span className="text-xl">📦</span>
-                    <span className="text-sm">Ajouter un produit</span>
-                  </button>
-                  <button onClick={() => setShowManageModal(true)} className="min-h-[48px] flex flex-col items-center justify-center gap-1 p-3 bg-slate-800 border border-slate-700 rounded-xl shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 active:scale-95 text-slate-100 font-medium">
-                    <span className="text-xl">⚙️</span>
-                    <span className="text-sm">Gérer</span>
-                  </button>
-                  <button onClick={() => setShowDataModal(true)} className="min-h-[48px] flex flex-col items-center justify-center gap-1 p-3 bg-slate-800 border border-slate-700 rounded-xl shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 active:scale-95 text-slate-100 font-medium">
-                    <span className="text-xl">📊</span>
-                    <span className="text-sm">Données</span>
-                  </button>
-                  <button onClick={() => setShowOrdersModal(true)} className="col-span-2 min-h-[48px] flex flex-col items-center justify-center gap-1 p-3 bg-slate-800 border border-slate-700 rounded-xl shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 active:scale-95 text-slate-100 font-medium">
-                    <span className="text-xl">📋</span>
-                    <span className="text-sm">Commandes</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  {brands.map((brand) => (
-                    <div key={brand.id} className="flex flex-col items-center gap-2">
-                      <button onClick={() => openBrand(brand)} className="w-full aspect-square rounded-[24px] overflow-hidden border border-slate-700 bg-slate-800 shadow-md transition-transform active:scale-95 hover:shadow-lg hover:shadow-indigo-500/20">
-                        {brand.image ? <img src={brand.image} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-700 flex items-center justify-center text-[10px] text-slate-400 font-medium">IMAGE</div>}
-                      </button>
-                      <span className="text-slate-300 font-semibold text-xs tracking-tight bg-slate-800/80 px-2 py-0.5 rounded-full">{brand.name}</span>
-                    </div>
-                  ))}
-                </div>
+      // Helper pour générer les éléments répétés (éviter trop de duplication)
+      const renderBrandsGrid = () => brands.map(brand => React.createElement('div', { key: brand.id, className: 'flex flex-col items-center gap-2' },
+        React.createElement('button', { onClick: () => openBrand(brand), className: 'w-full aspect-square rounded-[24px] overflow-hidden border border-slate-700 bg-slate-800 shadow-md transition-transform active:scale-95 hover:shadow-lg hover:shadow-indigo-500/20' },
+          brand.image ? React.createElement('img', { src: brand.image, className: 'w-full h-full object-cover' }) : React.createElement('div', { className: 'w-full h-full bg-slate-700 flex items-center justify-center text-[10px] text-slate-400 font-medium' }, 'IMAGE')
+        ),
+        React.createElement('span', { className: 'text-slate-300 font-semibold text-xs tracking-tight bg-slate-800/80 px-2 py-0.5 rounded-full' }, brand.name)
+      ));
+      
+      const renderProductsGrid = () => selectedBrand.products.map(prod => React.createElement('div', { key: prod.id, className: 'flex flex-col items-center gap-2 bg-slate-800/50 p-2 rounded-2xl shadow-sm border border-slate-700' },
+        React.createElement('button', { onClick: () => openProductModal(prod), className: 'w-full aspect-square rounded-[20px] overflow-hidden border border-slate-600 bg-slate-700 active:scale-95 transition-transform' },
+          prod.image ? React.createElement('img', { src: prod.image, className: 'w-full h-full object-cover' }) : React.createElement('div', { className: 'w-full h-full bg-slate-700 flex items-center justify-center text-[10px] text-slate-400 font-medium' }, 'PROD')
+        ),
+        React.createElement('span', { className: 'text-slate-200 font-medium text-xs text-center px-1' }, prod.name),
+        showPrices ? React.createElement('span', { className: 'text-indigo-400 font-bold text-sm bg-slate-800 px-3 py-1 rounded-full' }, `${prod.price}€`) : React.createElement('span', { className: 'text-slate-500 font-bold text-sm bg-slate-800 px-3 py-1 rounded-full' }, '•••')
+      ));
+      
+      return React.createElement('div', { className: 'fixed inset-0 bg-slate-900 flex justify-center font-sans' },
+        notification && React.createElement('div', { className: 'fixed top-6 z-[100] bg-slate-800 text-slate-100 px-6 py-3 rounded-full text-xs font-bold shadow-2xl animate-fade-in-down border border-indigo-500/30' }, notification),
+        React.createElement('div', { className: `w-full min-h-screen p-4 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}` },
+          // HEADER
+          React.createElement('div', { className: 'flex justify-between items-center mb-8 mt-2' },
+            React.createElement('button', { onClick: goHome, className: 'text-slate-400 text-[11px] font-medium tracking-tight hover:text-slate-200 transition-colors' }, currentView === 'home' ? 'LAICHE HOLDING' : '← Retour'),
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              isAdmin && React.createElement('button', { onClick: () => setShowPrices(!showPrices), className: `w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all active:scale-95 ${showPrices ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300'}`, title: showPrices ? "Masquer les prix" : "Afficher les prix" }, showPrices ? '€' : '€̷'),
+              React.createElement('button', { onClick: toggleAdmin, className: `px-4 py-1 text-[10px] font-semibold uppercase tracking-widest rounded-lg border transition-all ${isAdmin ? "bg-indigo-600 text-white border-indigo-500" : "bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700"}` }, isAdmin ? "Admin" : "Connexion")
+            )
+          ),
+          // CONTENU PRINCIPAL
+          currentView === 'home' ? (isAdmin ? React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+            React.createElement('button', { onClick: () => setShowModal(true), className: 'min-h-[48px] flex flex-col items-center justify-center gap-1 p-3 bg-slate-800 border border-slate-700 rounded-xl shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 active:scale-95 text-slate-100 font-medium' }, React.createElement('span', { className: 'text-xl' }, '🏷️'), React.createElement('span', { className: 'text-sm' }, 'Ajouter une marque')),
+            React.createElement('button', { onClick: () => setShowBrandSelect(true), className: 'min-h-[48px] flex flex-col items-center justify-center gap-1 p-3 bg-slate-800 border border-slate-700 rounded-xl shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 active:scale-95 text-slate-100 font-medium' }, React.createElement('span', { className: 'text-xl' }, '📦'), React.createElement('span', { className: 'text-sm' }, 'Ajouter un produit')),
+            React.createElement('button', { onClick: () => setShowManageModal(true), className: 'min-h-[48px] flex flex-col items-center justify-center gap-1 p-3 bg-slate-800 border border-slate-700 rounded-xl shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 active:scale-95 text-slate-100 font-medium' }, React.createElement('span', { className: 'text-xl' }, '⚙️'), React.createElement('span', { className: 'text-sm' }, 'Gérer')),
+            React.createElement('button', { onClick: () => setShowDataModal(true), className: 'min-h-[48px] flex flex-col items-center justify-center gap-1 p-3 bg-slate-800 border border-slate-700 rounded-xl shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 active:scale-95 text-slate-100 font-medium' }, React.createElement('span', { className: 'text-xl' }, '📊'), React.createElement('span', { className: 'text-sm' }, 'Données')),
+            React.createElement('button', { onClick: () => setShowOrdersModal(true), className: 'col-span-2 min-h-[48px] flex flex-col items-center justify-center gap-1 p-3 bg-slate-800 border border-slate-700 rounded-xl shadow-sm hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200 active:scale-95 text-slate-100 font-medium' }, React.createElement('span', { className: 'text-xl' }, '📋'), React.createElement('span', { className: 'text-sm' }, 'Commandes'))
+          ) : React.createElement('div', { className: 'grid grid-cols-2 gap-4' }, renderBrandsGrid())) : React.createElement('div', { className: 'grid grid-cols-2 gap-4' }, renderProductsGrid()),
+          // MODALE PIN
+          showPinModal && React.createElement('div', { className: 'fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50' },
+            React.createElement('div', { className: 'bg-slate-800 w-full max-w-[320px] rounded-2xl shadow-2xl p-6 border border-slate-700' },
+              React.createElement('h2', { className: 'text-xl font-bold text-center text-slate-100 mb-4' }, 'Accès administrateur'),
+              React.createElement('div', { className: 'flex justify-center gap-3 mb-6' }, [...Array(6)].map((_, idx) => React.createElement('div', { key: idx, className: 'w-10 h-12 bg-slate-900 rounded-lg border border-slate-600 flex items-center justify-center text-xl font-mono text-slate-300' }, idx < pinCode.length ? '●' : ''))),
+              React.createElement('div', { className: 'grid grid-cols-3 gap-3 mb-4' },
+                [1,2,3,4,5,6,7,8,9].map(d => React.createElement('button', { key: d, onClick: () => handlePinDigit(d.toString()), className: 'h-14 bg-slate-700 rounded-xl text-2xl font-bold text-slate-100 active:scale-95 hover:bg-slate-600 transition-all' }, d)),
+                React.createElement('button', { onClick: handlePinDelete, className: 'h-14 bg-slate-700 rounded-xl text-xl font-bold text-slate-100 active:scale-95 hover:bg-slate-600 transition-all' }, '⌫'),
+                React.createElement('button', { onClick: () => handlePinDigit('0'), className: 'h-14 bg-slate-700 rounded-xl text-2xl font-bold text-slate-100 active:scale-95 hover:bg-slate-600 transition-all' }, '0'),
+                React.createElement('button', { onClick: () => setShowPinModal(false), className: 'h-14 bg-red-900/50 rounded-xl text-sm font-medium text-red-300 active:scale-95 hover:bg-red-800/50 transition-all' }, 'Annuler')
+              ),
+              React.createElement('p', { className: 'text-center text-[10px] text-slate-400 mt-2' }, 'Code PIN à 6 chiffres')
+            )
+          ),
+          // BOUTON PANIER (client)
+          !isAdmin && React.createElement('div', { className: 'fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none z-40' },
+            React.createElement('div', { className: 'w-full max-w-[360px] px-4 pb-4 pointer-events-auto' },
+              React.createElement('div', { className: 'relative inline-block' },
+                React.createElement('button', { onClick: () => setShowCartModal(true), className: 'w-12 h-12 bg-indigo-600 rounded-xl shadow-xl flex items-center justify-center active:scale-95 transition-all hover:bg-indigo-500' }, React.createElement('span', { className: 'text-white text-xl font-bold' }, '🛒')),
+                cart.length > 0 && React.createElement('span', { className: 'absolute -top-2 -right-2 bg-emerald-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md' }, cart.reduce((s,i) => s + i.quantity, 0))
               )
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                {selectedBrand.products.map((prod) => (
-                  <div key={prod.id} className="flex flex-col items-center gap-2 bg-slate-800/50 p-2 rounded-2xl shadow-sm border border-slate-700">
-                    <button onClick={() => openProductModal(prod)} className="w-full aspect-square rounded-[20px] overflow-hidden border border-slate-600 bg-slate-700 active:scale-95 transition-transform">
-                      {prod.image ? <img src={prod.image} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-slate-700 flex items-center justify-center text-[10px] text-slate-400 font-medium">PROD</div>}
-                    </button>
-                    <span className="text-slate-200 font-medium text-xs text-center px-1">{prod.name}</span>
-                    {showPrices ? (
-                      <span className="text-indigo-400 font-bold text-sm bg-slate-800 px-3 py-1 rounded-full">{prod.price}€</span>
-                    ) : (
-                      <span className="text-slate-500 font-bold text-sm bg-slate-800 px-3 py-1 rounded-full">•••</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-      
-            {/* MODALE DE CONNEXION PIN */}
-            {showPinModal && (
-              <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50">
-                <div className="bg-slate-800 w-full max-w-[320px] rounded-2xl shadow-2xl p-6 border border-slate-700">
-                  <h2 className="text-xl font-bold text-center text-slate-100 mb-4">Accès administrateur</h2>
-                  <div className="flex justify-center gap-3 mb-6">
-                    {[...Array(6)].map((_, idx) => (
-                      <div key={idx} className="w-10 h-12 bg-slate-900 rounded-lg border border-slate-600 flex items-center justify-center text-xl font-mono text-slate-300">
-                        {idx < pinCode.length ? '●' : ''}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    {[1,2,3,4,5,6,7,8,9].map(digit => (
-                      <button key={digit} onClick={() => handlePinDigit(digit.toString())} className="h-14 bg-slate-700 rounded-xl text-2xl font-bold text-slate-100 active:scale-95 hover:bg-slate-600 transition-all"> {digit} </button>
-                    ))}
-                    <button onClick={handlePinDelete} className="h-14 bg-slate-700 rounded-xl text-xl font-bold text-slate-100 active:scale-95 hover:bg-slate-600 transition-all">⌫</button>
-                    <button onClick={() => handlePinDigit('0')} className="h-14 bg-slate-700 rounded-xl text-2xl font-bold text-slate-100 active:scale-95 hover:bg-slate-600 transition-all">0</button>
-                    <button onClick={() => setShowPinModal(false)} className="h-14 bg-red-900/50 rounded-xl text-sm font-medium text-red-300 active:scale-95 hover:bg-red-800/50 transition-all">Annuler</button>
-                  </div>
-                  <p className="text-center text-[10px] text-slate-400 mt-2">Code PIN à 6 chiffres</p>
-                </div>
-              </div>
-            )}
-      
-            {/* BOUTON PANIER (client) */}
-            {!isAdmin && (
-              <div className="fixed bottom-0 left-0 right-0 flex justify-center pointer-events-none z-40">
-                <div className="w-full max-w-[360px] px-4 pb-4 pointer-events-auto">
-                  <div className="relative inline-block">
-                    <button onClick={() => setShowCartModal(true)} className="w-12 h-12 bg-indigo-600 rounded-xl shadow-xl flex items-center justify-center active:scale-95 transition-all hover:bg-indigo-500">
-                      <span className="text-white text-xl font-bold">🛒</span>
-                    </button>
-                    {cart.length > 0 && (
-                      <span className="absolute -top-2 -right-2 bg-emerald-600 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-md">
-                        {cart.reduce((s, i) => s + i.quantity, 0)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-      
-            {/* MODALE PRODUIT */}
-            {selectedProduct && !isAdmin && (
-              <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-                <div className="bg-slate-800 w-full max-w-[320px] rounded-3xl overflow-hidden shadow-2xl border border-slate-700">
-                  <div className="aspect-square bg-slate-700">
-                    {selectedProduct.image ? <img src={selectedProduct.image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">Pas d'image</div>}
-                  </div>
-                  <div className="p-5">
-                    <h3 className="text-xl font-bold text-slate-100">{selectedProduct.name}</h3>
-                    <p className="text-slate-400 text-sm mt-1">Prix unitaire : {showPrices ? `${selectedProduct.price}€` : '•••'}</p>
-                    <div className="flex items-center justify-between mt-4">
-                      <span className="text-slate-300 font-medium">Quantité</span>
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => setProductQuantity(Math.max(1, productQuantity - 1))} className="w-8 h-8 bg-slate-700 rounded-full font-bold text-slate-200 active:scale-95">-</button>
-                        <span className="w-8 text-center font-semibold text-slate-100">{productQuantity}</span>
-                        <button onClick={() => setProductQuantity(productQuantity + 1)} className="w-8 h-8 bg-slate-700 rounded-full font-bold text-slate-200 active:scale-95">+</button>
-                      </div>
-                    </div>
-                    <button onClick={addToCart} className="w-full mt-6 py-3 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 hover:bg-indigo-500 transition-colors">
-                      Ajouter au panier {showPrices ? `· ${(selectedProduct.price * productQuantity).toFixed(2)}€` : ''}
-                    </button>
-                    <button onClick={() => setSelectedProduct(null)} className="w-full mt-3 py-2 bg-slate-700 text-slate-300 rounded-xl text-sm active:scale-95 hover:bg-slate-600 transition-colors">Fermer</button>
-                  </div>
-                </div>
-              </div>
-            )}
-      
-            {/* MODALE PANIER */}
-            {showCartModal && !isAdmin && (
-              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                <div className="bg-slate-800 w-full max-w-[340px] rounded-2xl shadow-2xl max-h-[80vh] flex flex-col border border-slate-700">
-                  <div className="p-4 border-b border-slate-700 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-slate-100">Mon panier</h2>
-                    <button onClick={() => setShowCartModal(false)} className="text-slate-400 text-2xl hover:text-slate-200">&times;</button>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-4">
-                    {cart.length === 0 ? <p className="text-center text-slate-400 py-8">Votre panier est vide</p> : (
-                      <div className="space-y-3">
-                        {cart.map((item, idx) => (
-                          <div key={idx} className="flex gap-3 items-center border-b border-slate-700 pb-3">
-                            <div className="w-12 h-12 bg-slate-700 rounded-lg overflow-hidden flex-shrink-0">
-                              {item.product.image ? <img src={item.product.image} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[8px] text-slate-500">img</div>}
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-semibold text-slate-100 text-sm">{item.product.name}</p>
-                              <p className="text-slate-400 text-xs">{item.brandName} · {item.quantity} × {showPrices ? `${item.product.price}€` : '•••'}</p>
-                              {showPrices && <p className="text-indigo-400 text-xs font-bold">{(item.product.price * item.quantity).toFixed(2)}€</p>}
-                            </div>
-                            <button onClick={() => removeFromCart(idx)} className="w-8 h-8 bg-red-900/50 text-red-300 rounded-full font-bold active:scale-95 hover:bg-red-800/50">✕</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  {cart.length > 0 && (
-                    <div className="p-4 border-t border-slate-700">
-                      {showPrices && (
-                        <div className="flex justify-between font-bold text-slate-100 mb-3">
-                          <span>Total</span>
-                          <span className="text-indigo-400">{cartTotal.toFixed(2)}€</span>
-                        </div>
-                      )}
-                      <button onClick={openDeliveryModal} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 hover:bg-indigo-500 transition-colors">Valider la commande</button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-      
-            {/* MODALE LIVRAISON */}
-            {showDeliveryModal && !isAdmin && (
-              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                <div className="bg-slate-800 w-full max-w-[340px] rounded-2xl shadow-2xl p-6 border border-slate-700">
-                  <h2 className="text-xl font-bold text-slate-100 mb-4">Livraison</h2>
-                  <div className="space-y-3">
-                    <input type="text" autoComplete="off" placeholder="Nom / Entreprise *" className="w-full p-3 bg-slate-900 rounded-xl border border-slate-700 outline-none focus:border-indigo-500 text-slate-100 placeholder:text-slate-500" value={deliveryInfo.name} onChange={(e) => setDeliveryInfo({...deliveryInfo, name: e.target.value})} />
-                    <input type="tel" autoComplete="off" placeholder="Téléphone" className="w-full p-3 bg-slate-900 rounded-xl border border-slate-700 outline-none focus:border-indigo-500 text-slate-100 placeholder:text-slate-500" value={deliveryInfo.phone} onChange={(e) => setDeliveryInfo({...deliveryInfo, phone: e.target.value})} />
-                    <input type="text" autoComplete="off" placeholder="Adresse *" className="w-full p-3 bg-slate-900 rounded-xl border border-slate-700 outline-none focus:border-indigo-500 text-slate-100 placeholder:text-slate-500" value={deliveryInfo.address} onChange={(e) => setDeliveryInfo({...deliveryInfo, address: e.target.value})} />
-                    <textarea autoComplete="off" placeholder="Commentaire / instructions spécifiques" className="w-full p-3 bg-slate-900 rounded-xl border border-slate-700 outline-none focus:border-indigo-500 text-slate-100 placeholder:text-slate-500 resize-none" rows="2" value={deliveryInfo.instructions} onChange={(e) => setDeliveryInfo({...deliveryInfo, instructions: e.target.value})} />
-                  </div>
-                  <div className="flex gap-3 mt-6">
-                    <button onClick={() => setShowDeliveryModal(false)} className="flex-1 py-3 bg-slate-700 rounded-xl font-medium text-slate-200 active:scale-95 hover:bg-slate-600 transition-colors">Annuler</button>
-                    <button onClick={validateOrder} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 hover:bg-indigo-500 transition-colors">Valider</button>
-                  </div>
-                </div>
-              </div>
-            )}
-      
-            {/* MODALE COMMANDES (admin) */}
-            {showOrdersModal && isAdmin && (
-              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                <div className="bg-slate-800 w-full max-w-[340px] rounded-2xl shadow-2xl max-h-[85vh] flex flex-col border border-slate-700">
-                  <div className="p-4 border-b border-slate-700 flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-slate-100">Commandes</h2>
-                    <button onClick={() => setShowOrdersModal(false)} className="text-slate-400 text-2xl hover:text-slate-200">&times;</button>
-                  </div>
-                  <div className="flex border-b border-slate-700">
-                    <button onClick={() => setOrdersActiveTab("new")} className={`flex-1 py-3 text-xs font-medium transition-all ${ordersActiveTab === "new" ? "text-indigo-400 border-b-2 border-indigo-400" : "text-slate-400"}`}>Nouvelles ({newOrders.length})</button>
-                    <button onClick={() => setOrdersActiveTab("processed")} className={`flex-1 py-3 text-xs font-medium transition-all ${ordersActiveTab === "processed" ? "text-indigo-400 border-b-2 border-indigo-400" : "text-slate-400"}`}>Traitées ({processedOrders.length})</button>
-                    <button onClick={() => setOrdersActiveTab("delivered")} className={`flex-1 py-3 text-xs font-medium transition-all ${ordersActiveTab === "delivered" ? "text-indigo-400 border-b-2 border-indigo-400" : "text-slate-400"}`}>Livrées ({deliveredOrders.length})</button>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-3">
-                    {/* Contenu dynamique selon onglet, similaire aux versions précédentes */}
-                    {ordersActiveTab === "new" && (
-                      <div>
-                        {newOrders.length === 0 && <p className="text-center text-slate-400 py-4">Aucune nouvelle commande</p>}
-                        {newOrders.map(order => (
-                          <div key={order.id} className="mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600">
-                            <div className="text-xs text-slate-400 mb-1">{order.timestamp}</div>
-                            <div className="font-semibold text-slate-100">{order.delivery.name}</div>
-                            <div className="text-xs text-slate-300">{order.delivery.address}</div>
-                            <div className="text-xs text-slate-300">{order.delivery.phone && `📞 ${order.delivery.phone}`}</div>
-                            {order.delivery.instructions && <div className="text-xs italic text-slate-400 mt-1">📝 {order.delivery.instructions}</div>}
-                            <div className="mt-2 space-y-1">
-                              {order.items.map((item, idx) => (
-                                <div key={idx} className="flex justify-between text-xs text-slate-300">
-                                  <span>{item.quantity}× {item.product.name}</span>
-                                  {showPrices ? <span>{(item.product.price * item.quantity).toFixed(2)}€</span> : <span>•••</span>}
-                                </div>
-                              ))}
-                            </div>
-                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-600">
-                              {showPrices ? <span className="font-bold text-indigo-400">Total : {order.total.toFixed(2)}€</span> : <span className="font-bold text-slate-400">Total : •••</span>}
-                              <button onClick={() => requestConfirm("updateOrder", { orderId: order.id, newStatus: "processed" }, () => updateOrderStatus(order.id, "processed"))} className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold active:scale-95 hover:bg-indigo-500">Marquer traitée</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {ordersActiveTab === "processed" && (
-                      <div>
-                        {processedOrders.length === 0 && <p className="text-center text-slate-400 py-4">Aucune commande traitée</p>}
-                        {processedOrders.map(order => (
-                          <div key={order.id} className="mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600">
-                            <div className="text-xs text-slate-400 mb-1">{order.timestamp}</div>
-                            <div className="font-semibold text-slate-100">{order.delivery.name}</div>
-                            <div className="text-xs text-slate-300">{order.delivery.address}</div>
-                            <div className="text-xs text-slate-300">{order.delivery.phone && `📞 ${order.delivery.phone}`}</div>
-                            {order.delivery.instructions && <div className="text-xs italic text-slate-400 mt-1">📝 {order.delivery.instructions}</div>}
-                            <div className="mt-2 space-y-1">
-                              {order.items.map((item, idx) => (
-                                <div key={idx} className="flex justify-between text-xs text-slate-300">
-                                  <span>{item.quantity}× {item.product.name}</span>
-                                  {showPrices ? <span>{(item.product.price * item.quantity).toFixed(2)}€</span> : <span>•••</span>}
-                                </div>
-                              ))}
-                            </div>
-                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-600">
-                              {showPrices ? <span className="font-bold text-indigo-400">Total : {order.total.toFixed(2)}€</span> : <span className="font-bold text-slate-400">Total : •••</span>}
-                              <button onClick={() => requestConfirm("updateOrder", { orderId: order.id, newStatus: "delivered" }, () => updateOrderStatus(order.id, "delivered"))} className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold active:scale-95 hover:bg-indigo-500">Marquer livrée</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {ordersActiveTab === "delivered" && (
-                      <div>
-                        {deliveredOrders.length === 0 && <p className="text-center text-slate-400 py-4">Aucune commande livrée</p>}
-                        {deliveredOrders.map(order => (
-                          <div key={order.id} className="mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600 opacity-75">
-                            <div className="text-xs text-slate-400 mb-1">{order.timestamp}</div>
-                            <div className="font-semibold text-slate-100">{order.delivery.name}</div>
-                            <div className="text-xs text-slate-300">{order.delivery.address}</div>
-                            <div className="text-xs text-slate-300">{order.delivery.phone && `📞 ${order.delivery.phone}`}</div>
-                            {order.delivery.instructions && <div className="text-xs italic text-slate-400 mt-1">📝 {order.delivery.instructions}</div>}
-                            <div className="mt-2 space-y-1">
-                              {order.items.map((item, idx) => (
-                                <div key={idx} className="flex justify-between text-xs text-slate-300">
-                                  <span>{item.quantity}× {item.product.name}</span>
-                                  {showPrices ? <span>{(item.product.price * item.quantity).toFixed(2)}€</span> : <span>•••</span>}
-                                </div>
-                              ))}
-                            </div>
-                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-600">
-                              {showPrices ? <span className="font-bold text-indigo-400">Total : {order.total.toFixed(2)}€</span> : <span className="font-bold text-slate-400">Total : •••</span>}
-                              <span className="text-xs text-emerald-400">Livrée</span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-      
-            {/* MODALE DONNÉES (import/export) */}
-            {showDataModal && isAdmin && (
-              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                <div className="bg-slate-800 w-full max-w-[340px] rounded-2xl p-6 shadow-2xl border border-slate-700">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-bold text-slate-100">Gestion des données</h2>
-                    <button onClick={() => { setShowDataModal(false); setPreviewData(null); }} className="text-slate-400 text-2xl hover:text-slate-200">&times;</button>
-                  </div>
-                  {!sheetJsReady && <p className="text-xs text-amber-500 mb-2">Chargement de la bibliothèque Excel...</p>}
-                  {!previewData ? (
-                    <div className="mt-2 flex flex-col gap-3">
-                      <button onClick={exportToExcel} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 hover:bg-indigo-500 transition-colors">Exporter tout l'inventaire (Excel)</button>
-                      <label className={`w-full py-3 text-center rounded-xl font-bold transition-all active:scale-95 ${sheetJsReady ? 'bg-indigo-600 text-white cursor-pointer hover:bg-indigo-500' : 'bg-slate-700 text-slate-400 cursor-not-allowed'}`}>
-                        Choisir un fichier Excel à importer
-                        <input type="file" className="hidden" accept=".xlsx, .xls, .csv" disabled={!sheetJsReady} onChange={(e) => { const file = e.target.files[0]; if (file) analyzeImportFile(file); e.target.value = ''; }} />
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="mt-2">
-                      <div className="bg-slate-700 p-3 rounded-lg mb-4">
-                        <p className="text-sm font-semibold text-slate-100">Prévisualisation :</p>
-                        <p className="text-xs text-slate-300">{previewData.totalProducts} produits détectés dans {previewData.totalBrands} marques</p>
-                        {previewData.errors.length > 0 && <p className="text-xs text-red-400 mt-1">{previewData.errors.length} erreurs de données (voir console)</p>}
-                      </div>
-                      <div className="flex gap-3">
-                        <button onClick={cancelPreview} disabled={isImporting} className="flex-1 py-2 bg-slate-700 rounded-xl font-medium text-slate-200 active:scale-95 disabled:opacity-50 hover:bg-slate-600 transition-colors">Annuler</button>
-                        <button onClick={confirmImport} disabled={isImporting} className="flex-1 py-2 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 hover:bg-indigo-500 transition-colors">
-                          {isImporting ? (<> <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Importation... </>) : "Confirmer l'importation"}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  <p className="text-[10px] text-slate-400 mt-4 text-center">Format attendu : colonne A=Marque, B=Produit, C=Quantité, D=Prix (avec en-têtes)</p>
-                </div>
-              </div>
-            )}
-      
-            {/* MODALES ADMIN (ajout / gestion / édition) - version synthétique mais complète */}
-            {(showModal || showProductModal || showBrandSelect || showManageModal || editingBrand) && (
-              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                <div className="bg-slate-800 w-full p-6 rounded-[28px] border border-slate-700 shadow-2xl max-h-[80vh] overflow-y-auto">
-                  <div className="flex justify-end">
-                    <button onClick={() => { setShowModal(false); setShowProductModal(false); setShowBrandSelect(false); setShowManageModal(false); setEditingBrand(null); setEditingProduct(null); }} className="text-slate-400 text-2xl hover:text-slate-200">&times;</button>
-                  </div>
-                  {editingBrand && (
-                    <>
-                      <h2 className="text-slate-100 font-bold mb-6 text-lg border-l-4 border-indigo-500 pl-3">Modifier Marque</h2>
-                      <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Nom</label>
-                      <input type="text" autoComplete="off" className="w-full p-3 mb-4 bg-slate-900 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100" value={editingBrand.name} onChange={(e) => setEditingBrand({...editingBrand, name: e.target.value})} />
-                      <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Image</label>
-                      <input type="file" accept="image/*" autoComplete="off" onChange={(e) => handleImageUpload(e, setEditingBrand, editingBrand)} className="mb-8 w-full text-sm text-slate-400" />
-                      <div className="flex gap-3"><button onClick={() => setEditingBrand(null)} className="flex-1 py-3 bg-slate-700 rounded-xl font-medium text-slate-200">Annuler</button><button onClick={() => requestConfirm("saveBrand", null, saveBrandEdit)} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-medium">Enregistrer</button></div>
-                    </>
-                  )}
-                  {showModal && !editingBrand && (
-                    <>
-                      <h2 className="text-slate-100 font-bold mb-6 text-lg border-l-4 border-indigo-500 pl-3">Nouvelle Marque</h2>
-                      <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Nom</label>
-                      <input type="text" autoComplete="off" className="w-full p-3 mb-4 bg-slate-900 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100" value={newBrand.name} onChange={(e) => setNewBrand({...newBrand, name: e.target.value})} />
-                      <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Image</label>
-                      <input type="file" accept="image/*" autoComplete="off" onChange={(e) => handleImageUpload(e, setNewBrand, newBrand)} className="mb-8 w-full text-sm text-slate-400" />
-                      <div className="flex gap-3"><button onClick={() => setShowModal(false)} className="flex-1 py-3 bg-slate-700 rounded-xl font-medium text-slate-200">Annuler</button><button onClick={() => requestConfirm("addBrand", null, addBrand)} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-medium">Créer</button></div>
-                    </>
-                  )}
-                  {showManageModal && !editingBrand && (
-                    <>
-                      <h2 className="text-slate-100 font-bold mb-6 text-lg border-l-4 border-indigo-500 pl-3">Gestion</h2>
-                      {brands.map(b => (
-                        <div key={b.id} className="mb-3">
-                          <div className="flex items-center gap-2">
-                            <button onClick={() => setManageSelectedBrand(manageSelectedBrand === b.id ? null : b.id)} className="flex-1 p-4 bg-slate-900 rounded-xl text-left font-semibold text-slate-200 shadow-sm border border-slate-700 hover:bg-slate-700 transition-colors">{b.name}</button>
-                          </div>
-                          {manageSelectedBrand === b.id && (
-                            <div className="mt-2 pl-4">
-                              <div className="flex justify-center gap-2 mb-3">
-                                <button onClick={() => requestConfirm("deleteBrand", { brandId: b.id }, () => deleteBrand(b.id))} className="px-3 py-1.5 bg-red-900/50 text-red-300 rounded-lg text-xs font-bold active:scale-95 hover:bg-red-800/50">✕ Supprimer</button>
-                                <button onClick={() => setEditingBrand(b)} className="px-3 py-1.5 bg-slate-700 text-slate-200 rounded-lg text-xs font-bold active:scale-95 hover:bg-slate-600">✎ Modifier</button>
-                              </div>
-                              {b.products.map(p => (
-                                <div key={p.id} className="w-full mb-2 flex items-center gap-2">
-                                  <button onClick={() => setEditingProduct(editingProduct?.id === p.id ? null : p)} className="flex-1 p-3 bg-slate-900 border border-slate-700 text-slate-200 text-xs font-medium rounded-lg shadow-sm hover:bg-slate-800 text-left">{p.name}</button>
-                                  <button onClick={() => requestConfirm("deleteProduct", { brandId: b.id, productId: p.id }, () => deleteProduct(b.id, p.id))} className="w-8 h-8 bg-red-900/50 text-red-300 rounded-full font-bold active:scale-95 hover:bg-red-800/50">✕</button>
-                                </div>
-                              ))}
-                              {editingProduct && editingProduct.id && (
-                                <div className="p-4 mt-2 bg-slate-900 rounded-2xl border border-slate-700">
-                                  <label className="text-[9px] font-bold text-slate-400 uppercase">Nom</label>
-                                  <input type="text" autoComplete="off" value={editingProduct.name} className="w-full p-2 mb-2 bg-slate-800 rounded-lg border border-slate-700 text-slate-100" onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})} />
-                                  <label className="text-[9px] font-bold text-slate-400 uppercase">Quantité</label>
-                                  <input type="number" autoComplete="off" value={editingProduct.qty} className="w-full p-2 mb-2 bg-slate-800 rounded-lg border border-slate-700 text-slate-100" onChange={(e) => setEditingProduct({...editingProduct, qty: e.target.value})} />
-                                  <label className="text-[9px] font-bold text-slate-400 uppercase">Prix</label>
-                                  <input type="number" autoComplete="off" value={editingProduct.price} className="w-full p-2 mb-3 bg-slate-800 rounded-lg border border-slate-700 text-slate-100" onChange={(e) => setEditingProduct({...editingProduct, price: e.target.value})} />
-                                  <label className="text-[9px] font-bold text-slate-400 uppercase">Image</label>
-                                  <input type="file" accept="image/*" autoComplete="off" onChange={(e) => handleImageUpload(e, setEditingProduct, editingProduct)} className="mb-3 w-full text-[10px] text-slate-400" />
-                                  <div className="flex gap-2"><button onClick={() => setEditingProduct(null)} className="flex-1 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200">Annuler</button><button onClick={() => requestConfirm("saveProduct", null, saveProductEdit)} className="flex-1 py-2 bg-indigo-600 text-white rounded-lg">Enregistrer</button></div>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      <button onClick={() => setShowManageModal(false)} className="w-full py-3 bg-indigo-600 text-white rounded-xl mt-4 font-medium hover:bg-indigo-500 transition-colors">Fermer</button>
-                    </>
-                  )}
-                  {showBrandSelect && !editingBrand && (
-                    <>
-                      <h2 className="text-slate-100 font-bold mb-6 text-lg border-l-4 border-indigo-500 pl-3">Choisir Marque</h2>
-                      <div className="grid grid-cols-2 gap-3 mb-6">{brands.map(b => <button key={b.id} onClick={() => { setNewProduct({...newProduct, brandId: b.id}); setShowBrandSelect(false); setShowProductModal(true); }} className="p-3 bg-slate-900 border border-slate-700 rounded-xl font-medium text-slate-200 hover:bg-slate-800 transition-colors">{b.name}</button>)}</div>
-                      <button onClick={() => setShowBrandSelect(false)} className="w-full py-3 bg-slate-700 rounded-xl font-medium text-slate-200">Annuler</button>
-                    </>
-                  )}
-                  {showProductModal && !editingBrand && (
-                    <>
-                      <h2 className="text-slate-100 font-bold mb-6 text-lg border-l-4 border-indigo-500 pl-3">Nouveau Produit</h2>
-                      <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Nom</label>
-                      <input type="text" autoComplete="off" className="w-full p-3 mb-3 bg-slate-900 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100" onChange={(e) => setNewProduct({...newProduct, name: e.target.value})} />
-                      <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Quantité</label>
-                      <input type="number" autoComplete="off" className="w-full p-3 mb-3 bg-slate-900 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100" onChange={(e) => setNewProduct({...newProduct, qty: e.target.value})} />
-                      <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Prix</label>
-                      <input type="number" autoComplete="off" className="w-full p-3 mb-3 bg-slate-900 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100" onChange={(e) => setNewProduct({...newProduct, price: e.target.value})} />
-                      <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider mt-2">Image</label>
-                      <input type="file" accept="image/*" autoComplete="off" onChange={(e) => handleImageUpload(e, setNewProduct, newProduct)} className="mb-6 w-full text-sm text-slate-400" />
-                      <div className="flex gap-3"><button onClick={() => setShowProductModal(false)} className="flex-1 py-3 bg-slate-700 rounded-xl font-medium text-slate-200">Annuler</button><button onClick={() => requestConfirm("addProduct", null, addProduct)} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-medium">Ajouter</button></div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-      
-            {/* MODALE DE CONFIRMATION INTERNE */}
-            {confirmAction && (
-              <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[200]">
-                <div className="bg-slate-800 w-full max-w-[280px] rounded-2xl p-5 shadow-2xl border border-slate-700">
-                  <p className="text-slate-100 text-center font-medium mb-4">Confirmer l'action ?</p>
-                  <div className="flex gap-3">
-                    <button onClick={cancelConfirm} className="flex-1 py-2 bg-slate-700 rounded-xl font-medium text-slate-200 active:scale-95">Annuler</button>
-                    <button onClick={executeConfirm} className="flex-1 py-2 bg-indigo-600 text-white rounded-xl font-bold active:scale-95">Confirmer</button>
-                  </div>
-                </div>
-              </div>
-            )}
-      
-            {/* CONSOLE DE DÉBOGAGE */}
-            {isAdmin && <DebugConsole />}
-          </div>
-          <style jsx>{`::-webkit-scrollbar { display: none; } @keyframes fade-in-down { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } } .animate-fade-in-down { animation: fade-in-down 0.3s ease-out; }`}</style>
-        </div>
+            )
+          ),
+          // MODALE PRODUIT (client)
+          selectedProduct && !isAdmin && React.createElement('div', { className: 'fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50' },
+            React.createElement('div', { className: 'bg-slate-800 w-full max-w-[320px] rounded-3xl overflow-hidden shadow-2xl border border-slate-700' },
+              React.createElement('div', { className: 'aspect-square bg-slate-700' }, selectedProduct.image ? React.createElement('img', { src: selectedProduct.image, className: 'w-full h-full object-cover' }) : React.createElement('div', { className: 'w-full h-full flex items-center justify-center text-slate-400 text-sm' }, 'Pas d\'image')),
+              React.createElement('div', { className: 'p-5' },
+                React.createElement('h3', { className: 'text-xl font-bold text-slate-100' }, selectedProduct.name),
+                React.createElement('p', { className: 'text-slate-400 text-sm mt-1' }, `Prix unitaire : ${showPrices ? `${selectedProduct.price}€` : '•••'}`),
+                React.createElement('div', { className: 'flex items-center justify-between mt-4' },
+                  React.createElement('span', { className: 'text-slate-300 font-medium' }, 'Quantité'),
+                  React.createElement('div', { className: 'flex items-center gap-3' },
+                    React.createElement('button', { onClick: () => setProductQuantity(Math.max(1, productQuantity-1)), className: 'w-8 h-8 bg-slate-700 rounded-full font-bold text-slate-200 active:scale-95' }, '-'),
+                    React.createElement('span', { className: 'w-8 text-center font-semibold text-slate-100' }, productQuantity),
+                    React.createElement('button', { onClick: () => setProductQuantity(productQuantity+1), className: 'w-8 h-8 bg-slate-700 rounded-full font-bold text-slate-200 active:scale-95' }, '+')
+                  )
+                ),
+                React.createElement('button', { onClick: addToCart, className: 'w-full mt-6 py-3 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 hover:bg-indigo-500 transition-colors' }, `Ajouter au panier ${showPrices ? `· ${(selectedProduct.price * productQuantity).toFixed(2)}€` : ''}`),
+                React.createElement('button', { onClick: () => setSelectedProduct(null), className: 'w-full mt-3 py-2 bg-slate-700 text-slate-300 rounded-xl text-sm active:scale-95 hover:bg-slate-600 transition-colors' }, 'Fermer')
+              )
+            )
+          ),
+          // MODALE PANIER
+          showCartModal && !isAdmin && React.createElement('div', { className: 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50' },
+            React.createElement('div', { className: 'bg-slate-800 w-full max-w-[340px] rounded-2xl shadow-2xl max-h-[80vh] flex flex-col border border-slate-700' },
+              React.createElement('div', { className: 'p-4 border-b border-slate-700 flex justify-between items-center' }, React.createElement('h2', { className: 'text-lg font-bold text-slate-100' }, 'Mon panier'), React.createElement('button', { onClick: () => setShowCartModal(false), className: 'text-slate-400 text-2xl hover:text-slate-200' }, '×')),
+              React.createElement('div', { className: 'flex-1 overflow-y-auto p-4' }, cart.length === 0 ? React.createElement('p', { className: 'text-center text-slate-400 py-8' }, 'Votre panier est vide') : React.createElement('div', { className: 'space-y-3' }, cart.map((item, idx) => React.createElement('div', { key: idx, className: 'flex gap-3 items-center border-b border-slate-700 pb-3' },
+                React.createElement('div', { className: 'w-12 h-12 bg-slate-700 rounded-lg overflow-hidden flex-shrink-0' }, item.product.image ? React.createElement('img', { src: item.product.image, className: 'w-full h-full object-cover' }) : React.createElement('div', { className: 'w-full h-full flex items-center justify-center text-[8px] text-slate-500' }, 'img')),
+                React.createElement('div', { className: 'flex-1' },
+                  React.createElement('p', { className: 'font-semibold text-slate-100 text-sm' }, item.product.name),
+                  React.createElement('p', { className: 'text-slate-400 text-xs' }, `${item.brandName} · ${item.quantity} × ${showPrices ? `${item.product.price}€` : '•••'}`),
+                  showPrices && React.createElement('p', { className: 'text-indigo-400 text-xs font-bold' }, `${(item.product.price * item.quantity).toFixed(2)}€`)
+                ),
+                React.createElement('button', { onClick: () => removeFromCart(idx), className: 'w-8 h-8 bg-red-900/50 text-red-300 rounded-full font-bold active:scale-95 hover:bg-red-800/50' }, '✕')
+              )))),
+              cart.length > 0 && React.createElement('div', { className: 'p-4 border-t border-slate-700' },
+                showPrices && React.createElement('div', { className: 'flex justify-between font-bold text-slate-100 mb-3' }, React.createElement('span', null, 'Total'), React.createElement('span', { className: 'text-indigo-400' }, `${cartTotal.toFixed(2)}€`)),
+                React.createElement('button', { onClick: openDeliveryModal, className: 'w-full py-3 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 hover:bg-indigo-500 transition-colors' }, 'Valider la commande')
+              )
+            )
+          ),
+          // MODALE LIVRAISON (similaire, raccourcie pour la longueur)
+          showDeliveryModal && !isAdmin && React.createElement('div', { className: 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50' },
+            React.createElement('div', { className: 'bg-slate-800 w-full max-w-[340px] rounded-2xl shadow-2xl p-6 border border-slate-700' },
+              React.createElement('h2', { className: 'text-xl font-bold text-slate-100 mb-4' }, 'Livraison'),
+              React.createElement('div', { className: 'space-y-3' },
+                React.createElement('input', { type: 'text', autoComplete: 'off', placeholder: 'Nom / Entreprise *', className: 'w-full p-3 bg-slate-900 rounded-xl border border-slate-700 outline-none focus:border-indigo-500 text-slate-100 placeholder:text-slate-500', value: deliveryInfo.name, onChange: e => setDeliveryInfo({...deliveryInfo, name: e.target.value}) }),
+                React.createElement('input', { type: 'tel', autoComplete: 'off', placeholder: 'Téléphone', className: 'w-full p-3 bg-slate-900 rounded-xl border border-slate-700 outline-none focus:border-indigo-500 text-slate-100 placeholder:text-slate-500', value: deliveryInfo.phone, onChange: e => setDeliveryInfo({...deliveryInfo, phone: e.target.value}) }),
+                React.createElement('input', { type: 'text', autoComplete: 'off', placeholder: 'Adresse *', className: 'w-full p-3 bg-slate-900 rounded-xl border border-slate-700 outline-none focus:border-indigo-500 text-slate-100 placeholder:text-slate-500', value: deliveryInfo.address, onChange: e => setDeliveryInfo({...deliveryInfo, address: e.target.value}) }),
+                React.createElement('textarea', { autoComplete: 'off', placeholder: 'Commentaire / instructions', className: 'w-full p-3 bg-slate-900 rounded-xl border border-slate-700 outline-none focus:border-indigo-500 text-slate-100 placeholder:text-slate-500 resize-none', rows: 2, value: deliveryInfo.instructions, onChange: e => setDeliveryInfo({...deliveryInfo, instructions: e.target.value}) })
+              ),
+              React.createElement('div', { className: 'flex gap-3 mt-6' },
+                React.createElement('button', { onClick: () => setShowDeliveryModal(false), className: 'flex-1 py-3 bg-slate-700 rounded-xl font-medium text-slate-200 active:scale-95 hover:bg-slate-600' }, 'Annuler'),
+                React.createElement('button', { onClick: validateOrder, className: 'flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 hover:bg-indigo-500' }, 'Valider')
+              )
+            )
+          ),
+          // MODALE COMMANDES ADMIN (version simplifiée mais complète)
+          showOrdersModal && isAdmin && React.createElement('div', { className: 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50' },
+            React.createElement('div', { className: 'bg-slate-800 w-full max-w-[340px] rounded-2xl shadow-2xl max-h-[85vh] flex flex-col border border-slate-700' },
+              React.createElement('div', { className: 'p-4 border-b border-slate-700 flex justify-between items-center' }, React.createElement('h2', { className: 'text-lg font-bold text-slate-100' }, 'Commandes'), React.createElement('button', { onClick: () => setShowOrdersModal(false), className: 'text-slate-400 text-2xl hover:text-slate-200' }, '×')),
+              React.createElement('div', { className: 'flex border-b border-slate-700' },
+                React.createElement('button', { onClick: () => setOrdersActiveTab('new'), className: `flex-1 py-3 text-xs font-medium transition-all ${ordersActiveTab === 'new' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}` }, `Nouvelles (${newOrders.length})`),
+                React.createElement('button', { onClick: () => setOrdersActiveTab('processed'), className: `flex-1 py-3 text-xs font-medium transition-all ${ordersActiveTab === 'processed' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}` }, `Traitées (${processedOrders.length})`),
+                React.createElement('button', { onClick: () => setOrdersActiveTab('delivered'), className: `flex-1 py-3 text-xs font-medium transition-all ${ordersActiveTab === 'delivered' ? 'text-indigo-400 border-b-2 border-indigo-400' : 'text-slate-400'}` }, `Livrées (${deliveredOrders.length})`)
+              ),
+              React.createElement('div', { className: 'flex-1 overflow-y-auto p-3' }, (() => {
+                if (ordersActiveTab === 'new') return newOrders.length === 0 ? React.createElement('p', { className: 'text-center text-slate-400 py-4' }, 'Aucune nouvelle commande') : newOrders.map(order => React.createElement('div', { key: order.id, className: 'mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600' },
+                  React.createElement('div', { className: 'text-xs text-slate-400 mb-1' }, order.timestamp),
+                  React.createElement('div', { className: 'font-semibold text-slate-100' }, order.delivery.name),
+                  React.createElement('div', { className: 'text-xs text-slate-300' }, order.delivery.address),
+                  order.delivery.phone && React.createElement('div', { className: 'text-xs text-slate-300' }, `📞 ${order.delivery.phone}`),
+                  order.delivery.instructions && React.createElement('div', { className: 'text-xs italic text-slate-400 mt-1' }, `📝 ${order.delivery.instructions}`),
+                  React.createElement('div', { className: 'mt-2 space-y-1' }, order.items.map((item, idx) => React.createElement('div', { key: idx, className: 'flex justify-between text-xs text-slate-300' }, React.createElement('span', null, `${item.quantity}× ${item.product.name}`), showPrices ? React.createElement('span', null, `${(item.product.price * item.quantity).toFixed(2)}€`) : React.createElement('span', null, '•••'))),
+                  React.createElement('div', { className: 'flex justify-between items-center mt-2 pt-2 border-t border-slate-600' }, showPrices ? React.createElement('span', { className: 'font-bold text-indigo-400' }, `Total : ${order.total.toFixed(2)}€`) : React.createElement('span', { className: 'font-bold text-slate-400' }, 'Total : •••'), React.createElement('button', { onClick: () => requestConfirm('updateOrder', { orderId: order.id, newStatus: 'processed' }, () => updateOrderStatus(order.id, 'processed')), className: 'px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold active:scale-95 hover:bg-indigo-500' }, 'Marquer traitée'))
+                ));
+                if (ordersActiveTab === 'processed') return processedOrders.length === 0 ? React.createElement('p', { className: 'text-center text-slate-400 py-4' }, 'Aucune commande traitée') : processedOrders.map(order => React.createElement('div', { key: order.id, className: 'mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600' },
+                  React.createElement('div', { className: 'text-xs text-slate-400 mb-1' }, order.timestamp),
+                  React.createElement('div', { className: 'font-semibold text-slate-100' }, order.delivery.name),
+                  React.createElement('div', { className: 'text-xs text-slate-300' }, order.delivery.address),
+                  order.delivery.phone && React.createElement('div', { className: 'text-xs text-slate-300' }, `📞 ${order.delivery.phone}`),
+                  order.delivery.instructions && React.createElement('div', { className: 'text-xs italic text-slate-400 mt-1' }, `📝 ${order.delivery.instructions}`),
+                  React.createElement('div', { className: 'mt-2 space-y-1' }, order.items.map((item, idx) => React.createElement('div', { key: idx, className: 'flex justify-between text-xs text-slate-300' }, React.createElement('span', null, `${item.quantity}× ${item.product.name}`), showPrices ? React.createElement('span', null, `${(item.product.price * item.quantity).toFixed(2)}€`) : React.createElement('span', null, '•••'))),
+                  React.createElement('div', { className: 'flex justify-between items-center mt-2 pt-2 border-t border-slate-600' }, showPrices ? React.createElement('span', { className: 'font-bold text-indigo-400' }, `Total : ${order.total.toFixed(2)}€`) : React.createElement('span', { className: 'font-bold text-slate-400' }, 'Total : •••'), React.createElement('button', { onClick: () => requestConfirm('updateOrder', { orderId: order.id, newStatus: 'delivered' }, () => updateOrderStatus(order.id, 'delivered')), className: 'px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold active:scale-95 hover:bg-indigo-500' }, 'Marquer livrée'))
+                ));
+                return deliveredOrders.length === 0 ? React.createElement('p', { className: 'text-center text-slate-400 py-4' }, 'Aucune commande livrée') : deliveredOrders.map(order => React.createElement('div', { key: order.id, className: 'mb-4 p-3 bg-slate-700/50 rounded-xl border border-slate-600 opacity-75' },
+                  React.createElement('div', { className: 'text-xs text-slate-400 mb-1' }, order.timestamp),
+                  React.createElement('div', { className: 'font-semibold text-slate-100' }, order.delivery.name),
+                  React.createElement('div', { className: 'text-xs text-slate-300' }, order.delivery.address),
+                  order.delivery.phone && React.createElement('div', { className: 'text-xs text-slate-300' }, `📞 ${order.delivery.phone}`),
+                  order.delivery.instructions && React.createElement('div', { className: 'text-xs italic text-slate-400 mt-1' }, `📝 ${order.delivery.instructions}`),
+                  React.createElement('div', { className: 'mt-2 space-y-1' }, order.items.map((item, idx) => React.createElement('div', { key: idx, className: 'flex justify-between text-xs text-slate-300' }, React.createElement('span', null, `${item.quantity}× ${item.product.name}`), showPrices ? React.createElement('span', null, `${(item.product.price * item.quantity).toFixed(2)}€`) : React.createElement('span', null, '•••'))),
+                  React.createElement('div', { className: 'flex justify-between items-center mt-2 pt-2 border-t border-slate-600' }, showPrices ? React.createElement('span', { className: 'font-bold text-indigo-400' }, `Total : ${order.total.toFixed(2)}€`) : React.createElement('span', { className: 'font-bold text-slate-400' }, 'Total : •••'), React.createElement('span', { className: 'text-xs text-emerald-400' }, 'Livrée'))
+                ));
+              })())
+            )
+          ),
+          // MODALE DONNÉES
+          showDataModal && isAdmin && React.createElement('div', { className: 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50' },
+            React.createElement('div', { className: 'bg-slate-800 w-full max-w-[340px] rounded-2xl p-6 shadow-2xl border border-slate-700' },
+              React.createElement('div', { className: 'flex justify-between items-center mb-4' }, React.createElement('h2', { className: 'text-lg font-bold text-slate-100' }, 'Gestion des données'), React.createElement('button', { onClick: () => { setShowDataModal(false); setPreviewData(null); }, className: 'text-slate-400 text-2xl hover:text-slate-200' }, '×')),
+              !sheetJsReady && React.createElement('p', { className: 'text-xs text-amber-500 mb-2' }, 'Chargement de la bibliothèque Excel...'),
+              !previewData ? React.createElement('div', { className: 'mt-2 flex flex-col gap-3' },
+                React.createElement('button', { onClick: exportToExcel, className: 'w-full py-3 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 hover:bg-indigo-500 transition-colors' }, 'Exporter tout l\'inventaire (Excel)'),
+                React.createElement('label', { className: `w-full py-3 text-center rounded-xl font-bold transition-all active:scale-95 ${sheetJsReady ? 'bg-indigo-600 text-white cursor-pointer hover:bg-indigo-500' : 'bg-slate-700 text-slate-400 cursor-not-allowed'}` },
+                  'Choisir un fichier Excel à importer',
+                  React.createElement('input', { type: 'file', className: 'hidden', accept: '.xlsx, .xls, .csv', disabled: !sheetJsReady, onChange: (e) => { const file = e.target.files[0]; if(file) analyzeImportFile(file); e.target.value = ''; } })
+                )
+              ) : React.createElement('div', { className: 'mt-2' },
+                React.createElement('div', { className: 'bg-slate-700 p-3 rounded-lg mb-4' },
+                  React.createElement('p', { className: 'text-sm font-semibold text-slate-100' }, 'Prévisualisation :'),
+                  React.createElement('p', { className: 'text-xs text-slate-300' }, `${previewData.totalProducts} produits détectés dans ${previewData.totalBrands} marques`),
+                  previewData.errors.length > 0 && React.createElement('p', { className: 'text-xs text-red-400 mt-1' }, `${previewData.errors.length} erreurs de données (voir console)`)
+                ),
+                React.createElement('div', { className: 'flex gap-3' },
+                  React.createElement('button', { onClick: cancelPreview, disabled: isImporting, className: 'flex-1 py-2 bg-slate-700 rounded-xl font-medium text-slate-200 active:scale-95 disabled:opacity-50 hover:bg-slate-600' }, 'Annuler'),
+                  React.createElement('button', { onClick: confirmImport, disabled: isImporting, className: 'flex-1 py-2 bg-indigo-600 text-white rounded-xl font-bold active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 hover:bg-indigo-500' }, isImporting ? React.createElement(React.Fragment, null, React.createElement('svg', { className: 'animate-spin h-4 w-4 text-white', xmlns: 'http://www.w3.org/2000/svg', fill: 'none', viewBox: '0 0 24 24' }, React.createElement('circle', { className: 'opacity-25', cx: '12', cy: '12', r: '10', stroke: 'currentColor', strokeWidth: '4' }), React.createElement('path', { className: 'opacity-75', fill: 'currentColor', d: 'M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z' })), ' Importation...') : 'Confirmer l\'importation')
+                )
+              ),
+              React.createElement('p', { className: 'text-[10px] text-slate-400 mt-4 text-center' }, 'Format attendu : colonne A=Marque, B=Produit, C=Quantité, D=Prix (avec en-têtes)')
+            )
+          ),
+          // MODALES ADMIN AJOUT/GESTION/EDITION (version condensée mais fonctionnelle)
+          (showModal || showProductModal || showBrandSelect || showManageModal || editingBrand) && React.createElement('div', { className: 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50' },
+            React.createElement('div', { className: 'bg-slate-800 w-full p-6 rounded-[28px] border border-slate-700 shadow-2xl max-h-[80vh] overflow-y-auto' },
+              React.createElement('div', { className: 'flex justify-end' }, React.createElement('button', { onClick: () => { setShowModal(false); setShowProductModal(false); setShowBrandSelect(false); setShowManageModal(false); setEditingBrand(null); setEditingProduct(null); }, className: 'text-slate-400 text-2xl hover:text-slate-200' }, '×')),
+              editingBrand && React.createElement(React.Fragment, null,
+                React.createElement('h2', { className: 'text-slate-100 font-bold mb-6 text-lg border-l-4 border-indigo-500 pl-3' }, 'Modifier Marque'),
+                React.createElement('label', { className: 'text-[9px] uppercase font-bold text-slate-400 tracking-wider' }, 'Nom'),
+                React.createElement('input', { type: 'text', autoComplete: 'off', className: 'w-full p-3 mb-4 bg-slate-900 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100', value: editingBrand.name, onChange: (e) => setEditingBrand({...editingBrand, name: e.target.value}) }),
+                React.createElement('label', { className: 'text-[9px] uppercase font-bold text-slate-400 tracking-wider' }, 'Image'),
+                React.createElement('input', { type: 'file', accept: 'image/*', autoComplete: 'off', onChange: (e) => handleImageUpload(e, setEditingBrand, editingBrand), className: 'mb-8 w-full text-sm text-slate-400' }),
+                React.createElement('div', { className: 'flex gap-3' }, React.createElement('button', { onClick: () => setEditingBrand(null), className: 'flex-1 py-3 bg-slate-700 rounded-xl font-medium text-slate-200' }, 'Annuler'), React.createElement('button', { onClick: () => requestConfirm('saveBrand', null, saveBrandEdit), className: 'flex-1 py-3 bg-indigo-600 text-white rounded-xl font-medium' }, 'Enregistrer'))
+              ),
+              showModal && !editingBrand && React.createElement(React.Fragment, null,
+                React.createElement('h2', { className: 'text-slate-100 font-bold mb-6 text-lg border-l-4 border-indigo-500 pl-3' }, 'Nouvelle Marque'),
+                React.createElement('label', { className: 'text-[9px] uppercase font-bold text-slate-400 tracking-wider' }, 'Nom'),
+                React.createElement('input', { type: 'text', autoComplete: 'off', className: 'w-full p-3 mb-4 bg-slate-900 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100', value: newBrand.name, onChange: (e) => setNewBrand({...newBrand, name: e.target.value}) }),
+                React.createElement('label', { className: 'text-[9px] uppercase font-bold text-slate-400 tracking-wider' }, 'Image'),
+                React.createElement('input', { type: 'file', accept: 'image/*', autoComplete: 'off', onChange: (e) => handleImageUpload(e, setNewBrand, newBrand), className: 'mb-8 w-full text-sm text-slate-400' }),
+                React.createElement('div', { className: 'flex gap-3' }, React.createElement('button', { onClick: () => setShowModal(false), className: 'flex-1 py-3 bg-slate-700 rounded-xl font-medium text-slate-200' }, 'Annuler'), React.createElement('button', { onClick: () => requestConfirm('addBrand', null, addBrand), className: 'flex-1 py-3 bg-indigo-600 text-white rounded-xl font-medium' }, 'Créer'))
+              ),
+              showManageModal && !editingBrand && React.createElement(React.Fragment, null,
+                React.createElement('h2', { className: 'text-slate-100 font-bold mb-6 text-lg border-l-4 border-indigo-500 pl-3' }, 'Gestion'),
+                brands.map(b => React.createElement('div', { key: b.id, className: 'mb-3' },
+                  React.createElement('div', { className: 'flex items-center gap-2' }, React.createElement('button', { onClick: () => setManageSelectedBrand(manageSelectedBrand === b.id ? null : b.id), className: 'flex-1 p-4 bg-slate-900 rounded-xl text-left font-semibold text-slate-200 shadow-sm border border-slate-700 hover:bg-slate-700' }, b.name)),
+                  manageSelectedBrand === b.id && React.createElement('div', { className: 'mt-2 pl-4' },
+                    React.createElement('div', { className: 'flex justify-center gap-2 mb-3' },
+                      React.createElement('button', { onClick: () => requestConfirm('deleteBrand', { brandId: b.id }, () => deleteBrand(b.id)), className: 'px-3 py-1.5 bg-red-900/50 text-red-300 rounded-lg text-xs font-bold active:scale-95 hover:bg-red-800/50' }, '✕ Supprimer'),
+                      React.createElement('button', { onClick: () => setEditingBrand(b), className: 'px-3 py-1.5 bg-slate-700 text-slate-200 rounded-lg text-xs font-bold active:scale-95 hover:bg-slate-600' }, '✎ Modifier')
+                    ),
+                    b.products.map(p => React.createElement('div', { key: p.id, className: 'w-full mb-2 flex items-center gap-2' },
+                      React.createElement('button', { onClick: () => setEditingProduct(editingProduct?.id === p.id ? null : p), className: 'flex-1 p-3 bg-slate-900 border border-slate-700 text-slate-200 text-xs font-medium rounded-lg shadow-sm hover:bg-slate-800 text-left' }, p.name),
+                      React.createElement('button', { onClick: () => requestConfirm('deleteProduct', { brandId: b.id, productId: p.id }, () => deleteProduct(b.id, p.id)), className: 'w-8 h-8 bg-red-900/50 text-red-300 rounded-full font-bold active:scale-95 hover:bg-red-800/50' }, '✕')
+                    )),
+                    editingProduct && editingProduct.id && React.createElement('div', { className: 'p-4 mt-2 bg-slate-900 rounded-2xl border border-slate-700' },
+                      React.createElement('label', { className: 'text-[9px] font-bold text-slate-400 uppercase' }, 'Nom'),
+                      React.createElement('input', { type: 'text', autoComplete: 'off', value: editingProduct.name, className: 'w-full p-2 mb-2 bg-slate-800 rounded-lg border border-slate-700 text-slate-100', onChange: (e) => setEditingProduct({...editingProduct, name: e.target.value}) }),
+                      React.createElement('label', { className: 'text-[9px] font-bold text-slate-400 uppercase' }, 'Quantité'),
+                      React.createElement('input', { type: 'number', autoComplete: 'off', value: editingProduct.qty, className: 'w-full p-2 mb-2 bg-slate-800 rounded-lg border border-slate-700 text-slate-100', onChange: (e) => setEditingProduct({...editingProduct, qty: e.target.value}) }),
+                      React.createElement('label', { className: 'text-[9px] font-bold text-slate-400 uppercase' }, 'Prix'),
+                      React.createElement('input', { type: 'number', autoComplete: 'off', value: editingProduct.price, className: 'w-full p-2 mb-3 bg-slate-800 rounded-lg border border-slate-700 text-slate-100', onChange: (e) => setEditingProduct({...editingProduct, price: e.target.value}) }),
+                      React.createElement('label', { className: 'text-[9px] font-bold text-slate-400 uppercase' }, 'Image'),
+                      React.createElement('input', { type: 'file', accept: 'image/*', autoComplete: 'off', onChange: (e) => handleImageUpload(e, setEditingProduct, editingProduct), className: 'mb-3 w-full text-[10px] text-slate-400' }),
+                      React.createElement('div', { className: 'flex gap-2' }, React.createElement('button', { onClick: () => setEditingProduct(null), className: 'flex-1 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200' }, 'Annuler'), React.createElement('button', { onClick: () => requestConfirm('saveProduct', null, saveProductEdit), className: 'flex-1 py-2 bg-indigo-600 text-white rounded-lg' }, 'Enregistrer'))
+                    )
+                  )
+                )),
+                React.createElement('button', { onClick: () => setShowManageModal(false), className: 'w-full py-3 bg-indigo-600 text-white rounded-xl mt-4 font-medium hover:bg-indigo-500' }, 'Fermer')
+              ),
+              showBrandSelect && !editingBrand && React.createElement(React.Fragment, null,
+                React.createElement('h2', { className: 'text-slate-100 font-bold mb-6 text-lg border-l-4 border-indigo-500 pl-3' }, 'Choisir Marque'),
+                React.createElement('div', { className: 'grid grid-cols-2 gap-3 mb-6' }, brands.map(b => React.createElement('button', { key: b.id, onClick: () => { setNewProduct({...newProduct, brandId: b.id}); setShowBrandSelect(false); setShowProductModal(true); }, className: 'p-3 bg-slate-900 border border-slate-700 rounded-xl font-medium text-slate-200 hover:bg-slate-800' }, b.name))),
+                React.createElement('button', { onClick: () => setShowBrandSelect(false), className: 'w-full py-3 bg-slate-700 rounded-xl font-medium text-slate-200' }, 'Annuler')
+              ),
+              showProductModal && !editingBrand && React.createElement(React.Fragment, null,
+                React.createElement('h2', { className: 'text-slate-100 font-bold mb-6 text-lg border-l-4 border-indigo-500 pl-3' }, 'Nouveau Produit'),
+                React.createElement('label', { className: 'text-[9px] uppercase font-bold text-slate-400 tracking-wider' }, 'Nom'),
+                React.createElement('input', { type: 'text', autoComplete: 'off', className: 'w-full p-3 mb-3 bg-slate-900 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100', onChange: (e) => setNewProduct({...newProduct, name: e.target.value}) }),
+                React.createElement('label', { className: 'text-[9px] uppercase font-bold text-slate-400 tracking-wider' }, 'Quantité'),
+                React.createElement('input', { type: 'number', autoComplete: 'off', className: 'w-full p-3 mb-3 bg-slate-900 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100', onChange: (e) => setNewProduct({...newProduct, qty: e.target.value}) }),
+                React.createElement('label', { className: 'text-[9px] uppercase font-bold text-slate-400 tracking-wider' }, 'Prix'),
+                React.createElement('input', { type: 'number', autoComplete: 'off', className: 'w-full p-3 mb-3 bg-slate-900 rounded-lg outline-none focus:ring-1 focus:ring-indigo-500 text-slate-100', onChange: (e) => setNewProduct({...newProduct, price: e.target.value}) }),
+                React.createElement('label', { className: 'text-[9px] uppercase font-bold text-slate-400 tracking-wider mt-2' }, 'Image'),
+                React.createElement('input', { type: 'file', accept: 'image/*', autoComplete: 'off', onChange: (e) => handleImageUpload(e, setNewProduct, newProduct), className: 'mb-6 w-full text-sm text-slate-400' }),
+                React.createElement('div', { className: 'flex gap-3' }, React.createElement('button', { onClick: () => setShowProductModal(false), className: 'flex-1 py-3 bg-slate-700 rounded-xl font-medium text-slate-200' }, 'Annuler'), React.createElement('button', { onClick: () => requestConfirm('addProduct', null, addProduct), className: 'flex-1 py-3 bg-indigo-600 text-white rounded-xl font-medium' }, 'Ajouter'))
+              )
+            )
+          ),
+          // MODALE CONFIRMATION INTERNE
+          confirmAction && React.createElement('div', { className: 'fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[200]' },
+            React.createElement('div', { className: 'bg-slate-800 w-full max-w-[280px] rounded-2xl p-5 shadow-2xl border border-slate-700' },
+              React.createElement('p', { className: 'text-slate-100 text-center font-medium mb-4' }, 'Confirmer l\'action ?'),
+              React.createElement('div', { className: 'flex gap-3' }, React.createElement('button', { onClick: cancelConfirm, className: 'flex-1 py-2 bg-slate-700 rounded-xl font-medium text-slate-200 active:scale-95' }, 'Annuler'), React.createElement('button', { onClick: executeConfirm, className: 'flex-1 py-2 bg-indigo-600 text-white rounded-xl font-bold active:scale-95' }, 'Confirmer'))
+            )
+          ),
+          // CONSOLE DÉBOGAGE
+          isAdmin && React.createElement(DebugConsole, null)
+        ),
+        React.createElement('style', { jsx: true }, `::-webkit-scrollbar { display: none; } @keyframes fade-in-down { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } } .animate-fade-in-down { animation: fade-in-down 0.3s ease-out; }`)
       );
     };
     
-    // Rendu unique
-    window.reactRoot = window.reactRoot || ReactDOM.createRoot(document.getElementById('root'));
-    window.reactRoot.render(React.createElement(App));
+    // Rendu final
+    const rootElement = document.getElementById('root');
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(React.createElement(App));
   </script>
 </body>
 </html>
